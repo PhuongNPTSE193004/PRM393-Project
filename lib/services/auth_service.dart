@@ -1,32 +1,30 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import '../models/auth_exception.dart';
 import '../models/user_role.dart';
+import '../repositories/auth_repository.dart';
+import '../repositories/firebase/firebase_auth_repository.dart';
+import '../repositories/firebase/firestore_user_repository.dart';
+import '../repositories/user_repository.dart';
 import '../utils/validators.dart';
-import 'user_service.dart';
-
-class AuthException implements Exception {
-  AuthException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}
 
 class AuthService {
-  AuthService({UserService? userService})
-      : _userService = userService ?? UserService();
+  AuthService({
+    AuthRepository? authRepository,
+    UserRepository? userRepository,
+  })  : _authRepository = authRepository ?? FirebaseAuthRepository(),
+        _userRepository = userRepository ?? FirestoreUserRepository();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final UserService _userService;
+  final AuthRepository _authRepository;
+  final UserRepository _userRepository;
 
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  Stream<String?> get authStateChanges => _authRepository.authStateChanges;
 
-  User? get currentUser => _auth.currentUser;
+  String? get currentUserId => _authRepository.currentUserId;
 
   Future<UserRole?> getCurrentUserRole() async {
-    final user = currentUser;
-    if (user == null) return null;
-    return _userService.getUserRole(user.uid);
+    final uid = currentUserId;
+    if (uid == null) return null;
+    return _userRepository.getUserRole(uid);
   }
 
   Future<UserRole> login({
@@ -44,8 +42,8 @@ class AuthService {
       throw AuthException('Please enter a valid email or phone number.');
     }
 
-    if (!Validators.isPasswordValid(trimmedPassword)) {
-      throw AuthException('Password must be at least 6 characters.');
+    if (!Validators.isLoginPasswordValid(trimmedPassword)) {
+      throw AuthException(Validators.loginPasswordError);
     }
 
     String email;
@@ -53,28 +51,28 @@ class AuthService {
       email = trimmedIdentifier.toLowerCase();
     } else {
       final foundEmail =
-          await _userService.findEmailByPhone(trimmedIdentifier);
+          await _userRepository.findEmailByPhone(trimmedIdentifier);
       if (foundEmail == null) {
-        throw AuthException('Account does not exist.');
+        throw AuthException(Validators.loginPasswordError);
       }
       email = foundEmail;
     }
 
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
+      final uid = await _authRepository.signInWithEmailAndPassword(
         email: email,
         password: trimmedPassword,
       );
 
-      final role = await _userService.getUserRole(credential.user!.uid);
+      final role = await _userRepository.getUserRole(uid);
       if (role == null) {
-        await _auth.signOut();
-        throw AuthException('Account does not exist.');
+        await _authRepository.signOut();
+        throw AuthException(Validators.loginPasswordError);
       }
 
       return role;
     } on FirebaseAuthException catch (e) {
-      throw AuthException(_mapFirebaseAuthError(e));
+      throw AuthException(_mapFirebaseAuthError(e, isLogin: true));
     }
   }
 
@@ -102,18 +100,18 @@ class AuthService {
       throw AuthException('Please enter a valid email or phone number.');
     }
 
-    if (!Validators.isPasswordValid(trimmedPassword)) {
-      throw AuthException('Password must be at least 6 characters.');
+    if (!Validators.isRegisterPasswordValid(trimmedPassword)) {
+      throw AuthException(Validators.registerPasswordError);
     }
 
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
+      final uid = await _authRepository.createUserWithEmailAndPassword(
         email: trimmedEmail,
         password: trimmedPassword,
       );
 
-      await _userService.createUserProfile(
-        uid: credential.user!.uid,
+      await _userRepository.createUserProfile(
+        uid: uid,
         email: trimmedEmail,
         phone: trimmedPhone,
         displayName: displayName,
@@ -121,7 +119,7 @@ class AuthService {
 
       return UserRole.customer;
     } on FirebaseAuthException catch (e) {
-      throw AuthException(_mapFirebaseAuthError(e));
+      throw AuthException(_mapFirebaseAuthError(e, isLogin: false));
     }
   }
 
@@ -137,7 +135,7 @@ class AuthService {
       email = trimmedIdentifier.toLowerCase();
     } else if (Validators.isPhone(trimmedIdentifier)) {
       final foundEmail =
-          await _userService.findEmailByPhone(trimmedIdentifier);
+          await _userRepository.findEmailByPhone(trimmedIdentifier);
       if (foundEmail == null) {
         throw AuthException('Account does not exist.');
       }
@@ -147,32 +145,31 @@ class AuthService {
     }
 
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      await _authRepository.sendPasswordResetEmail(email);
     } on FirebaseAuthException catch (e) {
-      throw AuthException(_mapFirebaseAuthError(e));
+      throw AuthException(_mapFirebaseAuthError(e, isLogin: true));
     }
   }
 
-  Future<void> logout() async {
-    await _auth.signOut();
-  }
+  Future<void> logout() => _authRepository.signOut();
 
-  String _mapFirebaseAuthError(FirebaseAuthException e) {
+  String _mapFirebaseAuthError(FirebaseAuthException e, {bool isLogin = true}) {
     switch (e.code) {
       case 'invalid-email':
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Invalid email or password.';
       case 'user-not-found':
-        return 'Account does not exist.';
+        return Validators.loginPasswordError;
       case 'email-already-in-use':
         return 'An account with this email already exists.';
       case 'weak-password':
-        return 'Password must be at least 6 characters.';
+        return isLogin
+            ? Validators.loginPasswordError
+            : Validators.registerPasswordError;
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
       default:
-        return 'Invalid email or password.';
+        return Validators.loginPasswordError;
     }
   }
 }

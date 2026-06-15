@@ -13,7 +13,7 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  String _searchQuery = "";
+  String _searchQuery = '';
   String? _selectedCategory;
   double _maxPrice = 20000000;
   bool _inStockOnly = false;
@@ -78,11 +78,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
   // Filter Logic
   List<Product> get _filteredProducts {
     return _allProducts.where((p) {
-      if (_selectedCategory != null && p.categorySlug != _selectedCategory)
+      if (_selectedCategory != null && p.categorySlug != _selectedCategory) {
         return false;
+      }
       if (_searchQuery.isNotEmpty &&
-          !p.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+          !p.name.toLowerCase().contains(_searchQuery.toLowerCase())) {
         return false;
+      }
       if (p.price > _maxPrice) return false;
       if (_inStockOnly && p.stock <= 0) return false;
       return true;
@@ -119,13 +121,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Tìm trang bị...',
-                hintStyle: const TextStyle(color: Colors.white54),
-                prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                hintStyle: TextStyle(color: Colors.white54),
+                prefixIcon: Icon(Icons.search, color: Colors.white54),
                 filled: true,
                 fillColor: Colors.black26,
-                enabledBorder: const OutlineInputBorder(
+                enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: Colors.white24),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -173,7 +175,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                     Text(
                       '${(_maxPrice / 1000000).toStringAsFixed(1)}M ₫',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: kNeon,
                         fontSize: 10,
                         fontFamily: 'monospace',
@@ -232,7 +234,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         product: products[index],
                         onTap: () {
                           // Navigate to product details
-                          print('Tapped ${products[index].name}');
                         },
                       );
                     },

@@ -71,7 +71,7 @@ class ProductCard extends StatelessWidget {
                             ),
                             child: const Text(
                               'HẾT HÀNG',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.red,
@@ -111,10 +111,10 @@ class ProductCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Row(
                         children: [
-                          Icon(Icons.star, size: 12, color: kNeon),
+                          const Icon(Icons.star, size: 12, color: kNeon),
                           Text(
                             product.rating.toStringAsFixed(1),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 11,
                               color: kNeon,
                               fontWeight: FontWeight.bold,
@@ -127,7 +127,7 @@ class ProductCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${(product.price / 1000000).toStringAsFixed(1)}M ₫',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 14,
                       fontWeight: FontWeight.bold,

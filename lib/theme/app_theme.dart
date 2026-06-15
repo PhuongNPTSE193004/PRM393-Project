@@ -38,13 +38,13 @@ ThemeData buildTheme() {
       ),
     ),
 
-    inputDecorationTheme: InputDecorationTheme(
+    inputDecorationTheme: const InputDecorationTheme(
       filled: true,
       fillColor: kSurface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: const OutlineInputBorder(borderSide: BorderSide.none),
-      enabledBorder: const OutlineInputBorder(borderSide: BorderSide.none),
-      focusedBorder: const OutlineInputBorder(
+      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(
         borderSide: BorderSide(color: kNeon, width: 1),
       ),
     ),

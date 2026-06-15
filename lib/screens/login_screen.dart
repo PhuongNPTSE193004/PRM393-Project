@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../navigation/role_router.dart';
+import '../models/auth_exception.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/validators.dart';
@@ -57,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => message = e.message);
     } catch (_) {
       if (!mounted) return;
-      setState(() => message = 'Invalid email or password.');
+      setState(() => message = Validators.loginPasswordError);
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -186,7 +187,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         label: 'MẬT KHẨU',
                         controller: passwordController,
                         obscureText: true,
-                        validator: Validators.validatePassword,
+                        validator: isSignIn
+                            ? Validators.validateLoginPassword
+                            : Validators.validateRegisterPassword,
                         enabled: !isLoading,
                       ),
                       if (!isSignIn) ...[
@@ -331,7 +334,7 @@ class _HeroHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'RG/VN',
                   style: TextStyle(
                     fontFamily: 'monospace',
