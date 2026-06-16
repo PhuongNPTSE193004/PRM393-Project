@@ -1,9 +1,13 @@
+import 'package:airsoft_shop/screens/customer/product_detail_screen.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
 import '../../models/product.dart';
 import '../../widgets/product_card.dart';
+
+import '../../services/product_service.dart';
+import '../../repositories/firebase/firestore_product_repository.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -17,6 +21,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
   String? _selectedCategory;
   double _maxPrice = 20000000;
   bool _inStockOnly = false;
+  bool _loading = true;
+  late final ProductService _service;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _service = ProductService(FirestoreProductRepository());
+
+    _loadProducts();
+  }
 
   // Mock Categories (equivalent to useQuery for categories)
   final List<Category> _categories = [
@@ -27,7 +42,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   ];
 
   // Mock Products (equivalent to useQuery for products)
-  final List<Product> _allProducts = [
+  List<Product> _allProducts = [
     Product(
       slug: 'm4a1',
       name: 'M4A1 Carbine',
@@ -212,7 +227,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
           // Grid View
           Expanded(
-            child: products.isEmpty
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : products.isEmpty
                 ? const Center(
                     child: Text(
                       'No matches found',
@@ -233,7 +250,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       return ProductCard(
                         product: products[index],
                         onTap: () {
-                          // Navigate to product details
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ProductDetailScreen(product: products[index]),
+                            ),
+                          );
                         },
                       );
                     },
@@ -268,5 +291,16 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadProducts() async {
+    final products = await _service.getProducts();
+
+    debugPrint('Products count: ${products.length}');
+
+    setState(() {
+      _allProducts = products;
+      _loading = false;
+    });
   }
 }

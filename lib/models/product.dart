@@ -15,6 +15,11 @@ class Product {
   final String categorySlug;
   final List<String> images;
 
+  final String description;
+  final String? material;
+  final String? magazine;
+  final String? battery;
+
   Product({
     required this.slug,
     required this.name,
@@ -24,5 +29,9 @@ class Product {
     required this.stock,
     required this.categorySlug,
     this.images = const [],
+    this.description = '',
+    this.material,
+    this.magazine,
+    this.battery,
   });
 }
