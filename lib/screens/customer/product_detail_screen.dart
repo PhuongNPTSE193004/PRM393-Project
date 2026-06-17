@@ -1,12 +1,41 @@
 import 'package:flutter/material.dart';
 
 import '../../models/product.dart';
+import '../../services/cart_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/formatters.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
 
-  const ProductDetailScreen({super.key, required this.product});
+  /// Vietnamese display name for the product's category (e.g. "Súng trường"
+  /// for slug "rifles"). [Product] only stores [Product.categorySlug], so
+  /// the caller resolves the display name via ProductService/CategoryService
+  /// before navigating here — screens must not look up category names
+  /// directly from a repository.
+  final String? categoryName;
+
+  /// Related products to show at the bottom of the screen, resolved by the
+  /// caller via ProductService.getRelatedProducts(...) before navigation.
+  /// Defaults to an empty list so the section simply hides itself if the
+  /// caller hasn't wired this up yet.
+  final List<Product> relatedProducts;
+
+  /// Business logic for cart operations. Injected by the caller so this
+  /// screen never touches Firebase or repositories directly.
+  final CartService cartService;
+
+  /// Currently signed-in user's uid, used for cart operations.
+  final String uid;
+
+  const ProductDetailScreen({
+    super.key,
+    required this.product,
+    required this.cartService,
+    required this.uid,
+    this.categoryName,
+    this.relatedProducts = const [],
+  });
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -16,6 +45,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
   int _selectedImageIndex = 0;
   bool _isFavorite = false;
+  bool _isAddingToCart = false;
 
   static const _kThumbnailSize = 60.0;
   static const _kBottomBarHeight = 80.0;
@@ -45,7 +75,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ],
             ),
           ),
-          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomBar()),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBottomBar(),
+          ),
         ],
       ),
     );
@@ -86,15 +121,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             if (details.primaryVelocity == null) return;
             setState(() {
               if (details.primaryVelocity! < 0) {
-                _selectedImageIndex = (_selectedImageIndex + 1).clamp(
-                  0,
-                  images.length - 1,
-                );
+                _selectedImageIndex =
+                    (_selectedImageIndex + 1).clamp(0, images.length - 1);
               } else {
-                _selectedImageIndex = (_selectedImageIndex - 1).clamp(
-                  0,
-                  images.length - 1,
-                );
+                _selectedImageIndex =
+                    (_selectedImageIndex - 1).clamp(0, images.length - 1);
               }
             });
           },
@@ -107,7 +138,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
         // Dot indicator
         if (images.length > 1)
-          _DotIndicator(count: images.length, activeIndex: _selectedImageIndex),
+          _DotIndicator(
+            count: images.length,
+            activeIndex: _selectedImageIndex,
+          ),
 
         const SizedBox(height: 12),
 
@@ -134,9 +168,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Category label
-          if (product.categorySlug != null)
+          if (widget.categoryName != null)
             Text(
-              product.categorySlug!.toUpperCase(),
+              widget.categoryName!.toUpperCase(),
               style: const TextStyle(
                 color: kNeon,
                 fontSize: 11,
@@ -191,7 +225,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           // Price
           Text(
-            '${_formatPrice(product.price)}đ',
+            '${formatVnd(product.price)}đ',
             style: const TextStyle(
               color: kNeon,
               fontSize: 26,
@@ -274,11 +308,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               children: specs
                   .map(
                     (s) => _SpecRow(
-                      label: s.label,
-                      value: s.value,
-                      isLast: s == specs.last,
-                    ),
-                  )
+                  label: s.label,
+                  value: s.value,
+                  isLast: s == specs.last,
+                ),
+              )
                   .toList(),
             ),
           ),
@@ -314,7 +348,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // ─── Related Products ────────────────────────────────────────────────────────
 
   Widget _buildRelatedProducts() {
-    // TODO: wire to ProductService.getRelated(product.id)
+    if (widget.relatedProducts.isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: Column(
@@ -326,9 +361,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             height: 140,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: 4,
+              itemCount: widget.relatedProducts.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => const _RelatedProductPlaceholder(),
+              itemBuilder: (_, i) => _RelatedProductCard(
+                product: widget.relatedProducts[i],
+                onTap: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => ProductDetailScreen(
+                        product: widget.relatedProducts[i],
+                        cartService: widget.cartService,
+                        uid: widget.uid,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -344,16 +392,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         color: kBackground,
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+        border: Border(
+          top: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
       ),
       child: Row(
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () {
-                // TODO: call CartService.addToCart(product, quantity)
-              },
-              icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+              onPressed: _isAddingToCart ? null : _addToCart,
+              icon: _isAddingToCart
+                  ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+                  : const Icon(Icons.shopping_cart_outlined, size: 18),
               label: const Text('Thêm vào giỏ'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -367,9 +424,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
-              onPressed: () {
-                // TODO: call OrderService.buyNow(product, quantity)
-              },
+              onPressed: _isAddingToCart ? null : _buyNow,
               style: ElevatedButton.styleFrom(
                 backgroundColor: kNeon,
                 foregroundColor: Colors.black,
@@ -388,23 +443,47 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  // ─── Cart actions ────────────────────────────────────────────────────────────
 
-  String _formatPrice(double price) {
-    final str = price.toStringAsFixed(0);
-    final buffer = StringBuffer();
-    int count = 0;
-    for (int i = str.length - 1; i >= 0; i--) {
-      if (count > 0 && count % 3 == 0) buffer.write('.');
-      buffer.write(str[i]);
-      count++;
+  Future<void> _addToCart() async {
+    setState(() => _isAddingToCart = true);
+
+    try {
+      await widget.cartService.addToCart(
+        uid: widget.uid,
+        productSlug: widget.product.slug,
+        quantity: _quantity,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã thêm ${widget.product.name} vào giỏ hàng'),
+          backgroundColor: kNeon,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể thêm vào giỏ hàng. Vui lòng thử lại.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isAddingToCart = false);
     }
-    return buffer.toString().split('').reversed.join();
   }
-}
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Private sub-widgets
+  Future<void> _buyNow() async {
+    // "Mua ngay" funnels through the same cart-add flow for now, since
+    // there is no OrderService/checkout flow yet. Once one exists, this
+    // should navigate straight to checkout with this single item instead.
+    await _addToCart();
+    // TODO: navigate to checkout screen once OrderService exists.
+  }
+
+}
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _CircleIconButton extends StatelessWidget {
@@ -455,11 +534,8 @@ class _MainImageView extends StatelessWidget {
           if (imageUrl != null)
             Image.network(imageUrl!, fit: BoxFit.contain)
           else
-            const Icon(
-              Icons.image_not_supported,
-              size: 80,
-              color: Colors.white12,
-            ),
+            const Icon(Icons.image_not_supported,
+                size: 80, color: Colors.white12),
         ],
       ),
     );
@@ -649,15 +725,14 @@ class _SpecRow extends StatelessWidget {
         color: Colors.white.withOpacity(0.04),
         border: isLast
             ? null
-            : Border(bottom: BorderSide(color: Colors.white.withOpacity(0.07))),
+            : Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.07)),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white54, fontSize: 13),
-          ),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
           Text(
             value,
             style: const TextStyle(
@@ -747,20 +822,83 @@ class _QtyButton extends StatelessWidget {
   }
 }
 
-class _RelatedProductPlaceholder extends StatelessWidget {
-  const _RelatedProductPlaceholder();
+class _RelatedProductCard extends StatelessWidget {
+  final Product product;
+  final VoidCallback onTap;
+
+  const _RelatedProductCard({required this.product, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 110,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: const Center(
-        child: Icon(Icons.image_outlined, color: Colors.white12, size: 36),
+    final isOutOfStock = product.stock <= 0;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 110,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    height: 70,
+                    width: double.infinity,
+                    child: product.images.isNotEmpty
+                        ? Image.network(product.images.first, fit: BoxFit.cover)
+                        : const Icon(Icons.image_outlined,
+                        color: Colors.white12, size: 32),
+                  ),
+                ),
+                if (isOutOfStock)
+                  Positioned(
+                    top: 4,
+                    left: 4,
+                    child: Container(
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'SẮP HẾT',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              product.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 11),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${formatVnd(product.price)}đ',
+              style: const TextStyle(
+                color: kNeon,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

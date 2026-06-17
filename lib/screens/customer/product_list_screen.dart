@@ -1,13 +1,16 @@
 import 'package:airsoft_shop/screens/customer/product_detail_screen.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../services/cart_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
 import '../../models/product.dart';
 import '../../widgets/product_card.dart';
+import 'cart_screen.dart';
 
 import '../../services/product_service.dart';
 import '../../repositories/firebase/firestore_product_repository.dart';
+import '../../repositories/firebase/firestore_cart_repository.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -23,14 +26,34 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _inStockOnly = false;
   bool _loading = true;
   late final ProductService _service;
+  late final CartService _cartService;
+  late final AuthService _authService;
+  int _cartItemCount = 0;
+
+  String? get _uid => _authService.currentUserId;
 
   @override
   void initState() {
     super.initState();
 
-    _service = ProductService(FirestoreProductRepository());
+    _authService = AuthService();
+    final productRepository = FirestoreProductRepository();
+    _service = ProductService(productRepository);
+    _cartService = CartService(FirestoreCartRepository(productRepository));
 
     _loadProducts();
+    _loadCartCount();
+  }
+
+  Future<void> _loadCartCount() async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    final items = await _cartService.getCartItems(uid);
+    if (!mounted) return;
+    setState(() {
+      _cartItemCount = _cartService.calculateItemCount(items);
+    });
   }
 
   // Mock Categories (equivalent to useQuery for categories)
@@ -86,7 +109,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
+          (route) => false,
     );
   }
 
@@ -123,6 +146,54 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ),
         actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart_outlined),
+                onPressed: () async {
+                  final uid = _uid;
+                  if (uid == null) return;
+
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CartScreen(
+                        uid: uid,
+                        cartService: _cartService,
+                      ),
+                    ),
+                  );
+                  if (!mounted) return;
+                  _loadCartCount();
+                },
+              ),
+              if (_cartItemCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: kNeon,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _cartItemCount > 9 ? '9+' : '$_cartItemCount',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _logout(context),
@@ -231,36 +302,44 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : products.isEmpty
                 ? const Center(
-                    child: Text(
-                      'No matches found',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
+              child: Text(
+                'No matches found',
+                style: TextStyle(color: Colors.white54),
+              ),
+            )
                 : GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 0.75, // Adjust card proportion here
+              padding: const EdgeInsets.all(16),
+              gridDelegate:
+              const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.75, // Adjust card proportion here
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                return ProductCard(
+                  product: products[index],
+                  onTap: () async {
+                    final uid = _uid;
+                    if (uid == null) return;
+
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(
+                          product: products[index],
+                          cartService: _cartService,
+                          uid: uid,
                         ),
-                    itemCount: products.length,
-                    itemBuilder: (context, index) {
-                      return ProductCard(
-                        product: products[index],
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ProductDetailScreen(product: products[index]),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                    if (!mounted) return;
+                    _loadCartCount();
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
