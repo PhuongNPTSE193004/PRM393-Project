@@ -5,16 +5,13 @@ import '../../services/cart_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/cart_item_tile.dart';
+import 'checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   final String uid;
   final CartService cartService;
 
-  const CartScreen({
-    super.key,
-    required this.uid,
-    required this.cartService,
-  });
+  const CartScreen({super.key, required this.uid, required this.cartService});
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -149,10 +146,16 @@ class _CartScreenState extends State<CartScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.shopping_cart_outlined, color: Colors.white24, size: 56),
+                Icon(
+                  Icons.shopping_cart_outlined,
+                  color: Colors.white24,
+                  size: 56,
+                ),
                 SizedBox(height: 12),
-                Text('Giỏ hàng của bạn đang trống',
-                    style: TextStyle(color: Colors.white54)),
+                Text(
+                  'Giỏ hàng của bạn đang trống',
+                  style: TextStyle(color: Colors.white54),
+                ),
               ],
             ),
           ),
@@ -172,7 +175,7 @@ class _CartScreenState extends State<CartScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             children: [
               ..._items.map(
-                    (item) => Padding(
+                (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: CartItemTile(
                     item: item,
@@ -310,7 +313,10 @@ class _CartScreenState extends State<CartScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
+        ),
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 13)),
       ],
     );
@@ -324,7 +330,14 @@ class _CartScreenState extends State<CartScreen> {
         height: 52,
         child: ElevatedButton(
           onPressed: () {
-            // TODO: navigate to checkout flow once it exists.
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CheckoutScreen(
+                  uid: widget.uid,
+                  cartService: widget.cartService,
+                ),
+              ),
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: kNeon,

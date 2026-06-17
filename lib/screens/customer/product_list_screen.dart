@@ -7,6 +7,7 @@ import '../login_screen.dart';
 import '../../models/product.dart';
 import '../../widgets/product_card.dart';
 import 'cart_screen.dart';
+import 'profile_screen.dart';
 
 import '../../services/product_service.dart';
 import '../../repositories/firebase/firestore_product_repository.dart';
@@ -109,7 +110,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
+      (route) => false,
     );
   }
 
@@ -146,6 +147,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {
+              final uid = _uid;
+              if (uid == null) return;
+
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const CustomerProfileScreen(),
+                ),
+              );
+            },
+          ),
           Stack(
             alignment: Alignment.center,
             children: [
@@ -157,10 +171,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
                   await Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => CartScreen(
-                        uid: uid,
-                        cartService: _cartService,
-                      ),
+                      builder: (_) =>
+                          CartScreen(uid: uid, cartService: _cartService),
                     ),
                   );
                   if (!mounted) return;
@@ -302,44 +314,44 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : products.isEmpty
                 ? const Center(
-              child: Text(
-                'No matches found',
-                style: TextStyle(color: Colors.white54),
-              ),
-            )
+                    child: Text(
+                      'No matches found',
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                  )
                 : GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate:
-              const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.75, // Adjust card proportion here
-              ),
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                return ProductCard(
-                  product: products[index],
-                  onTap: () async {
-                    final uid = _uid;
-                    if (uid == null) return;
-
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProductDetailScreen(
-                          product: products[index],
-                          cartService: _cartService,
-                          uid: uid,
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.75, // Adjust card proportion here
                         ),
-                      ),
-                    );
-                    if (!mounted) return;
-                    _loadCartCount();
-                  },
-                );
-              },
-            ),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      return ProductCard(
+                        product: products[index],
+                        onTap: () async {
+                          final uid = _uid;
+                          if (uid == null) return;
+
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductDetailScreen(
+                                product: products[index],
+                                cartService: _cartService,
+                                uid: uid,
+                              ),
+                            ),
+                          );
+                          if (!mounted) return;
+                          _loadCartCount();
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),
