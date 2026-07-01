@@ -22,19 +22,43 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image & Badges
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Container(
-                    color: Colors.white10,
-                    child: const Icon(
-                      Icons.image_not_supported_outlined,
-                      color: Colors.white30,
-                      size: 48,
+                  if (product.images.isNotEmpty)
+                    Image.network(
+                      product.images.first,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.white10,
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          color: Colors.white30,
+                          size: 48,
+                        ),
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.white10,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(kNeon),
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  else
+                    Container(
+                      color: Colors.white10,
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: Colors.white30,
+                        size: 48,
+                      ),
                     ),
-                  ),
                   Positioned(
                     top: 8,
                     left: 8,
