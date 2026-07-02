@@ -8,6 +8,7 @@ import '../../models/product.dart';
 import '../../widgets/product_card.dart';
 import 'cart_screen.dart';
 import 'profile_screen.dart';
+import 'chat_screen.dart';
 
 import '../../services/product_service.dart';
 import '../../repositories/firebase/firestore_product_repository.dart';
@@ -211,6 +212,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 ),
             ],
           ),
+          IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
               Navigator.push(
@@ -367,6 +369,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: kNeon,
+        foregroundColor: Colors.black,
+        shape: const CircleBorder(),
+        onPressed: () {
+          final uid = _uid;
+          final email = _authService.currentUserEmail;
+          if (uid == null || email == null) return;
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CustomerChatScreen(uid: uid, email: email),
+            ),
+          );
+        },
+        child: const Icon(Icons.chat_bubble_outline),
       ),
     );
   }
