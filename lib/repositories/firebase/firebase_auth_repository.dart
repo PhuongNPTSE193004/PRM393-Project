@@ -15,6 +15,22 @@ class FirebaseAuthRepository implements AuthRepository {
   String? get currentUserId => _auth.currentUser?.uid;
 
   @override
+  String? get currentUserEmail => _auth.currentUser?.email;
+
+  @override
+  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+
+  @override
+  Future<void> reloadCurrentUser() async {
+    await _auth.currentUser?.reload();
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {
+    await _auth.currentUser?.sendEmailVerification();
+  }
+
+  @override
   Future<String> signInWithEmailAndPassword({
     required String email,
     required String password,
