@@ -12,6 +12,7 @@ import 'profile_screen.dart';
 import '../../services/product_service.dart';
 import '../../repositories/firebase/firestore_product_repository.dart';
 import '../../repositories/firebase/firestore_cart_repository.dart';
+import 'about_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -75,6 +76,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       fps: 400,
       stock: 5,
       categorySlug: 'aeg',
+      images: ['https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fm4a1.jpg?alt=media'],
     ),
     Product(
       slug: 'glock19',
@@ -84,6 +86,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       fps: 300,
       stock: 12,
       categorySlug: 'gbb',
+      images: ['https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fglock19.jpg?alt=media'],
     ),
     Product(
       slug: 'vsr10',
@@ -93,6 +96,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       fps: 500,
       stock: 0,
       categorySlug: 'sniper',
+      images: ['https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fvsr10.jpg?alt=media'],
     ),
     Product(
       slug: 'vest',
@@ -102,6 +106,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       fps: null,
       stock: 20,
       categorySlug: 'gear',
+      images: ['https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fvest.jpg?alt=media'],
     ),
   ];
 
@@ -205,6 +210,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   ),
                 ),
             ],
+          ),
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout),
