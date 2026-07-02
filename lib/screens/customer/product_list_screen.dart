@@ -1,9 +1,17 @@
+import 'package:airsoft_shop/screens/customer/product_detail_screen.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../services/cart_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
 import '../../models/product.dart';
 import '../../widgets/product_card.dart';
+import 'cart_screen.dart';
+import 'profile_screen.dart';
+
+import '../../services/product_service.dart';
+import '../../repositories/firebase/firestore_product_repository.dart';
+import '../../repositories/firebase/firestore_cart_repository.dart';
 import 'about_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
@@ -18,6 +26,37 @@ class _ProductListScreenState extends State<ProductListScreen> {
   String? _selectedCategory;
   double _maxPrice = 20000000;
   bool _inStockOnly = false;
+  bool _loading = true;
+  late final ProductService _service;
+  late final CartService _cartService;
+  late final AuthService _authService;
+  int _cartItemCount = 0;
+
+  String? get _uid => _authService.currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _authService = AuthService();
+    final productRepository = FirestoreProductRepository();
+    _service = ProductService(productRepository);
+    _cartService = CartService(FirestoreCartRepository(productRepository));
+
+    _loadProducts();
+    _loadCartCount();
+  }
+
+  Future<void> _loadCartCount() async {
+    final uid = _uid;
+    if (uid == null) return;
+
+    final items = await _cartService.getCartItems(uid);
+    if (!mounted) return;
+    setState(() {
+      _cartItemCount = _cartService.calculateItemCount(items);
+    });
+  }
 
   // Mock Categories (equivalent to useQuery for categories)
   final List<Category> _categories = [
@@ -28,7 +67,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   ];
 
   // Mock Products (equivalent to useQuery for products)
-  final List<Product> _allProducts = [
+  List<Product> _allProducts = [
     Product(
       slug: 'm4a1',
       name: 'M4A1 Carbine',
@@ -114,6 +153,64 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {
+              final uid = _uid;
+              if (uid == null) return;
+
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const CustomerProfileScreen(),
+                ),
+              );
+            },
+          ),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart_outlined),
+                onPressed: () async {
+                  final uid = _uid;
+                  if (uid == null) return;
+
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          CartScreen(uid: uid, cartService: _cartService),
+                    ),
+                  );
+                  if (!mounted) return;
+                  _loadCartCount();
+                },
+              ),
+              if (_cartItemCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: kNeon,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _cartItemCount > 9 ? '9+' : '$_cartItemCount',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
             icon: const Icon(Icons.info_outline),
             onPressed: () {
               Navigator.push(
@@ -226,7 +323,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
           // Grid View
           Expanded(
-            child: products.isEmpty
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : products.isEmpty
                 ? const Center(
                     child: Text(
                       'No matches found',
@@ -246,8 +345,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     itemBuilder: (context, index) {
                       return ProductCard(
                         product: products[index],
-                        onTap: () {
-                          // Navigate to product details
+                        onTap: () async {
+                          final uid = _uid;
+                          if (uid == null) return;
+
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductDetailScreen(
+                                product: products[index],
+                                cartService: _cartService,
+                                uid: uid,
+                              ),
+                            ),
+                          );
+                          if (!mounted) return;
+                          _loadCartCount();
                         },
                       );
                     },
@@ -282,5 +395,16 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadProducts() async {
+    final products = await _service.getProducts();
+
+    debugPrint('Products count: ${products.length}');
+
+    setState(() {
+      _allProducts = products;
+      _loading = false;
+    });
   }
 }

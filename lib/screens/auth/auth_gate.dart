@@ -4,6 +4,7 @@ import '../../navigation/role_router.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
+import 'verification_screen.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -27,6 +28,10 @@ class AuthGate extends StatelessWidget {
         final user = authSnapshot.data;
         if (user == null) {
           return const LoginScreen();
+        }
+
+        if (!authService.isEmailVerified) {
+          return VerificationScreen(email: authService.currentUserEmail ?? '');
         }
 
         return FutureBuilder<UserRole?>(

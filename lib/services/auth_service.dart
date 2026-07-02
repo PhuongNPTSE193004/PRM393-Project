@@ -21,6 +21,14 @@ class AuthService {
 
   String? get currentUserId => _authRepository.currentUserId;
 
+  bool get isEmailVerified => _authRepository.isEmailVerified;
+
+  String? get currentUserEmail => _authRepository.currentUserEmail;
+
+  Future<void> reloadUser() => _authRepository.reloadCurrentUser();
+
+  Future<void> sendEmailVerification() => _authRepository.sendEmailVerification();
+
   Future<UserRole?> getCurrentUserRole() async {
     final uid = currentUserId;
     if (uid == null) return null;
@@ -64,6 +72,11 @@ class AuthService {
         password: trimmedPassword,
       );
 
+      if (!_authRepository.isEmailVerified) {
+        await _authRepository.signOut();
+        throw AuthException('EMAIL_NOT_VERIFIED');
+      }
+
       final role = await _userRepository.getUserRole(uid);
       if (role == null) {
         await _authRepository.signOut();
@@ -76,28 +89,20 @@ class AuthService {
     }
   }
 
-  Future<UserRole> register({
+  Future<void> register({
     required String email,
     required String password,
-    String? phone,
     String? displayName,
   }) async {
     final trimmedEmail = email.trim().toLowerCase();
     final trimmedPassword = password;
-    final trimmedPhone = phone?.trim();
 
     if (trimmedEmail.isEmpty || trimmedPassword.isEmpty) {
       throw AuthException('Please fill in all required fields.');
     }
 
     if (!Validators.isEmail(trimmedEmail)) {
-      throw AuthException('Please enter a valid email or phone number.');
-    }
-
-    if (trimmedPhone != null &&
-        trimmedPhone.isNotEmpty &&
-        !Validators.isPhone(trimmedPhone)) {
-      throw AuthException('Please enter a valid email or phone number.');
+      throw AuthException('Please enter a valid email.');
     }
 
     if (!Validators.isRegisterPasswordValid(trimmedPassword)) {
@@ -113,11 +118,10 @@ class AuthService {
       await _userRepository.createUserProfile(
         uid: uid,
         email: trimmedEmail,
-        phone: trimmedPhone,
         displayName: displayName,
       );
 
-      return UserRole.customer;
+      await _authRepository.sendEmailVerification();
     } on FirebaseAuthException catch (e) {
       throw AuthException(_mapFirebaseAuthError(e, isLogin: false));
     }

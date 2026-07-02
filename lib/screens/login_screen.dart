@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/validators.dart';
 import 'customer/product_list_screen.dart';
+import 'auth/verification_screen.dart';
 
 enum AuthTab { signIn, signUp }
 
@@ -19,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final identifierController = TextEditingController();
   final emailController = TextEditingController();
-  final phoneController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
@@ -45,17 +45,29 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         RoleRouter.navigateToRole(context, role);
       } else {
-        final role = await authService.register(
+        await authService.register(
           email: emailController.text,
           password: passwordController.text,
-          phone: phoneController.text,
         );
         if (!mounted) return;
-        RoleRouter.navigateToRole(context, role);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => VerificationScreen(email: emailController.text.trim()),
+          ),
+        );
       }
     } on AuthException catch (e) {
       if (!mounted) return;
-      setState(() => message = e.message);
+      if (e.message.startsWith('EMAIL_NOT_VERIFIED:')) {
+        final email = e.message.substring('EMAIL_NOT_VERIFIED:'.length);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => VerificationScreen(email: email),
+          ),
+        );
+      } else {
+        setState(() => message = e.message);
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => message = Validators.loginPasswordError);
@@ -111,7 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     identifierController.dispose();
     emailController.dispose();
-    phoneController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();
@@ -160,22 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               return 'Please fill in all required fields.';
                             }
                             if (!Validators.isEmail(value!.trim())) {
-                              return 'Please enter a valid email or phone number.';
-                            }
-                            return null;
-                          },
-                          enabled: !isLoading,
-                        ),
-                        const SizedBox(height: 20),
-                        _LabeledField(
-                          label: 'PHONE (OPTIONAL)',
-                          controller: phoneController,
-                          keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            final trimmed = value?.trim() ?? '';
-                            if (trimmed.isEmpty) return null;
-                            if (!Validators.isPhone(trimmed)) {
-                              return 'Please enter a valid email or phone number.';
+                              return 'Please enter a valid email.';
                             }
                             return null;
                           },
