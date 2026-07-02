@@ -25,7 +25,7 @@ class AboutScreen extends StatelessWidget {
   Future<void> _sendEmail(BuildContext context) async {
     const email = 'contact@airsoftshop.vn';
     final Uri emailLaunchUri = Uri(
-      scheme: 'mail to',
+      scheme: 'mailto',
       path: email,
       query: 'subject=${Uri.encodeComponent('Hỏi về trang bị Airsoft')}',
     );
@@ -71,7 +71,7 @@ class AboutScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'AIRSOFT SHOP',
+              'AIRSOFT TACTICAL SHOP',
               style: TextStyle(
                 color: kNeon,
                 fontSize: 28,
@@ -91,16 +91,7 @@ class AboutScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Chào mừng bạn đến với Airsoft Shop - điểm đến hàng đầu cho cộng đồng yêu thích bộ môn bắn súng mô hình tại Việt Nam. Chúng tôi tự hào cung cấp các dòng sản phẩm AEG, GBB và Sniper chính hãng từ những thương hiệu nổi tiếng thế giới.',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 15,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Tại đây, chúng tôi không chỉ bán sản phẩm, chúng tôi chia sẻ đam mê. Từ trang bị bảo hộ đến các phụ kiện nâng cấp tối tân, Airsoft Shop cam kết mang lại trải nghiệm chuyên nghiệp và an toàn nhất cho mọi "chiến binh".',
+              'Chào mừng bạn đến with Airsoft Tactical Shop - điểm đến hàng đầu cho cộng đồng yêu thích bộ môn bắn súng mô hình tại Việt Nam. Chúng tôi tự hào cung cấp các dòng sản phẩm AEG, GBB và Sniper chính hãng từ những thương hiệu nổi tiếng thế giới.',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 15,
@@ -135,6 +126,59 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            // Map Preview Image
+            GestureDetector(
+              onTap: () => _openMap(context),
+              child: Container(
+                height: 350,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: kNeon.withOpacity(0.5)),
+                  color: Colors.white.withOpacity(0.05),
+                ),
+                child: Stack(
+                  children: [
+                    Image.network(
+                      'https://mt1.google.com/vt/lyrs=m&x=104383&y=61590&z=17',
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) => const Center(
+                        child: Icon(Icons.map_outlined, color: Colors.white24, size: 48),
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(kNeon),
+                          ),
+                        );
+                      },
+                    ),
+                    // Center Pin
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 30),
+                        child: Icon(
+                          Icons.location_on,
+                          color: Colors.red,
+                          size: 40,
+                          shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                        ),
+                      ),
+                    ),
+                    const Align(
+                      alignment: Alignment.bottomRight,
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Icon(Icons.zoom_in, color: kNeon, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             InkWell(
               onTap: () => _openMap(context),
               child: Container(
@@ -164,7 +208,7 @@ class AboutScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
             const Text(
-              'LIÊN HỆ',
+              'LIÊN HỆ & GIỜ MỞ CỬA',
               style: TextStyle(
                 color: Colors.white54,
                 fontSize: 12,
@@ -177,7 +221,7 @@ class AboutScreen extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.phone, color: kNeon),
               title: Text(
-                '0123 456 789',
+                '0909 123 456',
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -193,6 +237,14 @@ class AboutScreen extends StatelessWidget {
                 ),
               ),
               trailing: const Icon(Icons.send, color: Colors.white38, size: 16),
+            ),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.access_time, color: kNeon),
+              title: Text(
+                '8:00 AM – 9:00 PM',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
