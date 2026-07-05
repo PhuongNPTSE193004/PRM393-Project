@@ -52,6 +52,7 @@ class FirestoreChatRepository implements ChatRepository {
       'senderRole': senderRole,
       'content': content.trim(),
       'timestamp': timestamp,
+      'read': false,
     });
 
     // 2. Update the parent chat room doc
@@ -74,5 +75,28 @@ class FirestoreChatRepository implements ChatRepository {
     await _chats.doc(customerId).set({
       updateField: false,
     }, SetOptions(merge: true));
+
+    // Update read state on individual messages sent by the other party
+    try {
+      final unreadSnap = await _chats
+          .doc(customerId)
+          .collection('messages')
+          .where('read', isEqualTo: false)
+          .get();
+
+      if (unreadSnap.docs.isNotEmpty) {
+        final batch = _firestore.batch();
+        for (final doc in unreadSnap.docs) {
+          final senderRole = doc.data()['senderRole'] as String?;
+          final isFromOther = isForAdmin
+              ? (senderRole == 'customer')
+              : (senderRole == 'admin' || senderRole == 'staff');
+          if (isFromOther) {
+            batch.update(doc.reference, {'read': true});
+          }
+        }
+        await batch.commit();
+      }
+    } catch (_) {}
   }
 }

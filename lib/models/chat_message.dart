@@ -6,6 +6,7 @@ class ChatMessage {
   final String senderRole;
   final String content;
   final DateTime timestamp;
+  final bool read;
 
   ChatMessage({
     required this.id,
@@ -13,6 +14,7 @@ class ChatMessage {
     required this.senderRole,
     required this.content,
     required this.timestamp,
+    required this.read,
   });
 
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
@@ -28,6 +30,7 @@ class ChatMessage {
       senderRole: data['senderRole'] ?? 'customer',
       content: data['content'] ?? '',
       timestamp: parsedTime,
+      read: data['read'] as bool? ?? false,
     );
   }
 }

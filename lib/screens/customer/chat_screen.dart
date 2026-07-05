@@ -227,13 +227,26 @@ class _CustomerChatScreenState extends State<CustomerChatScreen> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
-            child: Text(
-              timeStr,
-              style: const TextStyle(
-                color: kMuted,
-                fontSize: 9,
-                fontFamily: 'monospace',
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  timeStr,
+                  style: const TextStyle(
+                    color: kMuted,
+                    fontSize: 9,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    msg.read ? Icons.done_all_rounded : Icons.done_rounded,
+                    size: 11,
+                    color: msg.read ? kNeon : kMuted,
+                  ),
+                ],
+              ],
             ),
           ),
         ],
