@@ -9,10 +9,13 @@ import '../../widgets/product_card.dart';
 import 'cart_screen.dart';
 import 'profile_screen.dart';
 import 'chat_screen.dart';
+import 'notifications_screen.dart';
 
 import '../../services/product_service.dart';
+import '../../services/notification_service.dart';
 import '../../repositories/firebase/firestore_product_repository.dart';
 import '../../repositories/firebase/firestore_cart_repository.dart';
+import '../../repositories/firebase/firestore_notification_repository.dart';
 import 'about_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
@@ -31,6 +34,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   late final ProductService _service;
   late final CartService _cartService;
   late final AuthService _authService;
+  late final NotificationService _notificationService;
   int _cartItemCount = 0;
 
   String? get _uid => _authService.currentUserId;
@@ -43,6 +47,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     final productRepository = FirestoreProductRepository();
     _service = ProductService(productRepository);
     _cartService = CartService(FirestoreCartRepository(productRepository));
+    _notificationService = NotificationService(FirestoreNotificationRepository());
 
     _loadProducts();
     _loadCartCount();
@@ -211,6 +216,58 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   ),
                 ),
             ],
+          ),
+          StreamBuilder<int>(
+            stream: _notificationService.getUnreadCount(_uid ?? ''),
+            builder: (context, snapshot) {
+              final count = snapshot.data ?? 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    onPressed: () {
+                      final uid = _uid;
+                      if (uid == null) return;
+
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => NotificationsScreen(
+                            uid: uid,
+                            service: _notificationService,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          count > 9 ? '9+' : '$count',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.info_outline),

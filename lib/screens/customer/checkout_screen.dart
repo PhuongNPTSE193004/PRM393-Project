@@ -272,6 +272,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       'body': 'Đơn hàng #${orderRef.id.substring(0, 8)} đang được xử lý.',
       'kind': 'order',
       'created_at': FieldValue.serverTimestamp(),
+      'read': false,
     });
 
     await batch.commit();
