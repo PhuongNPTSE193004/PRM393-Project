@@ -110,6 +110,18 @@ class _CartScreenState extends State<CartScreen> {
 
     return Scaffold(
       backgroundColor: kBackground,
+      appBar: AppBar(
+        backgroundColor: kBackground,
+        foregroundColor: kNeon,
+        title: const Text(
+          'GIỎ HÀNG',
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: kNeon))
@@ -203,15 +215,6 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Giỏ hàng',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 2),
           Text(
             '$itemCount mặt hàng',
             style: const TextStyle(color: Colors.white54, fontSize: 13),

@@ -5,6 +5,7 @@ import '../../services/cart_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
 import '../../models/product.dart';
+import '../../models/category.dart';
 import '../../widgets/product_card.dart';
 import 'cart_screen.dart';
 import 'profile_screen.dart';
@@ -13,9 +14,11 @@ import 'notifications_screen.dart';
 
 import '../../services/product_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/category_service.dart';
 import '../../repositories/firebase/firestore_product_repository.dart';
 import '../../repositories/firebase/firestore_cart_repository.dart';
 import '../../repositories/firebase/firestore_notification_repository.dart';
+import '../../repositories/firebase/firestore_category_repository.dart';
 import 'about_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
@@ -35,6 +38,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   late final CartService _cartService;
   late final AuthService _authService;
   late final NotificationService _notificationService;
+  late final CategoryService _categoryService;
   int _cartItemCount = 0;
 
   String? get _uid => _authService.currentUserId;
@@ -47,9 +51,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
     final productRepository = FirestoreProductRepository();
     _service = ProductService(productRepository);
     _cartService = CartService(FirestoreCartRepository(productRepository));
-    _notificationService = NotificationService(FirestoreNotificationRepository());
+    _notificationService = NotificationService(
+      FirestoreNotificationRepository(),
+    );
+    _categoryService = CategoryService(FirestoreCategoryRepository());
 
     _loadProducts();
+    _loadCategories();
     _loadCartCount();
   }
 
@@ -64,60 +72,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
   }
 
-  // Mock Categories (equivalent to useQuery for categories)
-  final List<Category> _categories = [
-    Category(slug: 'aeg', nameVi: 'Súng Trường AEG'),
-    Category(slug: 'gbb', nameVi: 'Súng Lục GBB'),
-    Category(slug: 'sniper', nameVi: 'Súng Ngắm'),
-    Category(slug: 'gear', nameVi: 'Trang Bị'),
-  ];
-
-  // Mock Products (equivalent to useQuery for products)
-  List<Product> _allProducts = [
-    Product(
-      slug: 'm4a1',
-      name: 'M4A1 Carbine',
-      price: 4500000,
-      rating: 4.5,
-      fps: 400,
-      stock: 5,
-      categorySlug: 'aeg',
-      images: ['https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fm4a1.jpg?alt=media'],
-    ),
-    Product(
-      slug: 'glock19',
-      name: 'Glock 19 Gen 4',
-      price: 2500000,
-      rating: 4.8,
-      fps: 300,
-      stock: 12,
-      categorySlug: 'gbb',
-      images: ['https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fglock19.jpg?alt=media'],
-    ),
-    Product(
-      slug: 'vsr10',
-      name: 'VSR-10 Pro Sniper',
-      price: 6000000,
-      rating: 4.9,
-      fps: 500,
-      stock: 0,
-      categorySlug: 'sniper',
-      images: ['https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fvsr10.jpg?alt=media'],
-    ),
-    Product(
-      slug: 'vest',
-      name: 'Tactical Vest JPC',
-      price: 1200000,
-      rating: 4.2,
-      fps: null,
-      stock: 20,
-      categorySlug: 'gear',
-      images: ['https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fvest.jpg?alt=media'],
-    ),
-  ];
+  List<Category> _categories = [];
+  List<Product> _allProducts = [];
 
   Future<void> _logout(BuildContext context) async {
-    await AuthService().logout();
+    await _authService.logout();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -171,101 +130,44 @@ class _ProductListScreenState extends State<ProductListScreen> {
               );
             },
           ),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined),
-                onPressed: () async {
-                  final uid = _uid;
-                  if (uid == null) return;
+          _IconButtonWithBadge(
+            icon: Icons.shopping_cart_outlined,
+            count: _cartItemCount,
+            onPressed: () async {
+              final uid = _uid;
+              if (uid == null) return;
 
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          CartScreen(uid: uid, cartService: _cartService),
-                    ),
-                  );
-                  if (!mounted) return;
-                  _loadCartCount();
-                },
-              ),
-              if (_cartItemCount > 0)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: kNeon,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      _cartItemCount > 9 ? '9+' : '$_cartItemCount',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      CartScreen(uid: uid, cartService: _cartService),
                 ),
-            ],
+              );
+              if (!mounted) return;
+              _loadCartCount();
+            },
           ),
           StreamBuilder<int>(
             stream: _notificationService.getUnreadCount(_uid ?? ''),
             builder: (context, snapshot) {
-              final count = snapshot.data ?? 0;
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined),
-                    onPressed: () {
-                      final uid = _uid;
-                      if (uid == null) return;
+              return _IconButtonWithBadge(
+                icon: Icons.notifications_outlined,
+                count: snapshot.data ?? 0,
+                badgeColor: Colors.redAccent,
+                badgeTextColor: Colors.white,
+                onPressed: () {
+                  final uid = _uid;
+                  if (uid == null) return;
 
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => NotificationsScreen(
-                            uid: uid,
-                            service: _notificationService,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  if (count > 0)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: Colors.redAccent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          count > 9 ? '9+' : '$count',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => NotificationsScreen(
+                        uid: uid,
+                        service: _notificationService,
                       ),
                     ),
-                ],
+                  );
+                },
               );
             },
           ),
@@ -316,7 +218,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
                 _buildCategoryChip('Tất cả', null),
-                ..._categories.map((c) => _buildCategoryChip(c.nameVi, c.slug)),
+                ..._categories.map((c) => _buildCategoryChip(c.name, c.id)),
               ],
             ),
           ),
@@ -481,5 +383,61 @@ class _ProductListScreenState extends State<ProductListScreen> {
       _allProducts = products;
       _loading = false;
     });
+  }
+
+  Future<void> _loadCategories() async {
+    final categories = await _categoryService.getCategories();
+    if (!mounted) return;
+    setState(() {
+      _categories = categories;
+    });
+  }
+}
+
+class _IconButtonWithBadge extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final VoidCallback onPressed;
+  final Color badgeColor;
+  final Color badgeTextColor;
+
+  const _IconButtonWithBadge({
+    required this.icon,
+    required this.count,
+    required this.onPressed,
+    this.badgeColor = kNeon,
+    this.badgeTextColor = Colors.black,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(icon: Icon(icon), onPressed: onPressed),
+        if (count > 0)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              decoration: BoxDecoration(
+                color: badgeColor,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                count > 9 ? '9+' : '$count',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: badgeTextColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }

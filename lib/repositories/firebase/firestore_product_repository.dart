@@ -11,44 +11,18 @@ class FirestoreProductRepository implements ProductRepository {
   CollectionReference<Map<String, dynamic>> get _products =>
       _firestore.collection('products');
 
-  @override
-  Future<List<Product>> getProducts() async {
-    final snapshot = await _products.get();
-
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-
-      return Product(
-        slug: data['slug'] ?? doc.id,
-        name: data['name'] ?? '',
-        price: (data['price'] as num?)?.toDouble() ?? 0,
-        rating: (data['rating'] as num?)?.toDouble() ?? 0,
-        fps: data['fps'],
-        stock: data['stock'] ?? 0,
-        categorySlug: data['categorySlug'] ?? '',
-        description: data['description'] ?? '',
-        material: data['material'],
-        magazine: data['magazine'],
-        battery: data['battery'],
-        images: List<String>.from(data['images'] ?? []),
-      );
-    }).toList();
+  Product _fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    return _fromData(doc.id, doc.data());
   }
 
-  @override
-  Future<Product?> getProductBySlug(String slug) async {
-    final doc = await _products.doc(slug).get();
-
-    if (!doc.exists) {
-      return null;
-    }
-
-    final data = doc.data()!;
-
+  Product _fromData(String docId, Map<String, dynamic> data) {
+    final createdAtVal = data['createdAt'];
     return Product(
-      slug: data['slug'] ?? doc.id,
+      slug: data['slug'] ?? docId,
       name: data['name'] ?? '',
+      brand: data['brand'],
       price: (data['price'] as num?)?.toDouble() ?? 0,
+      discountPrice: (data['discountPrice'] as num?)?.toDouble(),
       rating: (data['rating'] as num?)?.toDouble() ?? 0,
       fps: data['fps'],
       stock: data['stock'] ?? 0,
@@ -57,8 +31,30 @@ class FirestoreProductRepository implements ProductRepository {
       material: data['material'],
       magazine: data['magazine'],
       battery: data['battery'],
+      powerSource: data['powerSource'],
+      fireMode: data['fireMode'],
+      barrelLength: (data['barrelLength'] as num?)?.toDouble(),
+      weight: (data['weight'] as num?)?.toDouble(),
+      warranty: data['warranty'],
+      isAvailable: data['isAvailable'] as bool? ?? true,
+      createdAt: createdAtVal is Timestamp ? createdAtVal.toDate() : null,
       images: List<String>.from(data['images'] ?? []),
     );
+  }
+
+  @override
+  Future<List<Product>> getProducts() async {
+    final snapshot = await _products.get();
+    return snapshot.docs.map(_fromDoc).toList();
+  }
+
+  @override
+  Future<Product?> getProductBySlug(String slug) async {
+    final doc = await _products.doc(slug).get();
+    if (!doc.exists) {
+      return null;
+    }
+    return _fromData(doc.id, doc.data()!);
   }
 
   @override
@@ -66,24 +62,6 @@ class FirestoreProductRepository implements ProductRepository {
     final snapshot = await _products
         .where('categorySlug', isEqualTo: categorySlug)
         .get();
-
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-
-      return Product(
-        slug: data['slug'] ?? doc.id,
-        name: data['name'] ?? '',
-        price: (data['price'] as num?)?.toDouble() ?? 0,
-        rating: (data['rating'] as num?)?.toDouble() ?? 0,
-        fps: data['fps'],
-        stock: data['stock'] ?? 0,
-        categorySlug: data['categorySlug'] ?? '',
-        description: data['description'] ?? '',
-        material: data['material'],
-        magazine: data['magazine'],
-        battery: data['battery'],
-        images: List<String>.from(data['images'] ?? []),
-      );
-    }).toList();
+    return snapshot.docs.map(_fromDoc).toList();
   }
 }
