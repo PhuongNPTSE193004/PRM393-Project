@@ -4,7 +4,6 @@ import '../models/auth_exception.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/validators.dart';
-import 'customer/product_list_screen.dart';
 import 'auth/verification_screen.dart';
 
 enum AuthTab { signIn, signUp }
@@ -104,12 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
-  }
-
-  void continueAsGuest() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProductListScreen()),
-    );
   }
 
   void _switchTab(AuthTab tab) {
@@ -231,20 +224,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                       const SizedBox(height: 24),
-                      const _OrDivider(),
-                      const SizedBox(height: 24),
-                      _GoogleButton(
-                        onPressed: isLoading
-                            ? null
-                            : () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Google sign-in coming soon'),
-                                  ),
-                                );
-                              },
-                      ),
-                      const SizedBox(height: 28),
                       Center(
                         child: TextButton(
                           onPressed: isLoading ? null : forgotPassword,
@@ -259,27 +238,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: TextButton(
-                          onPressed: isLoading ? null : continueAsGuest,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'TIẾP TỤC VỚI TƯ CÁCH KHÁCH →',
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 12,
-                              letterSpacing: 0.8,
-                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -501,84 +459,6 @@ class _LabeledField extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _OrDivider extends StatelessWidget {
-  const _OrDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'OR',
-            style: TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 12,
-              color: kMuted,
-              letterSpacing: 1,
-            ),
-          ),
-        ),
-        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
-      ],
-    );
-  }
-}
-
-class _GoogleButton extends StatelessWidget {
-  const _GoogleButton({required this.onPressed});
-
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        backgroundColor: kSurface,
-        foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-        shape: const RoundedRectangleBorder(),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(2),
-            ),
-            child: const Text(
-              'G',
-              style: TextStyle(
-                color: Color(0xFF4285F4),
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'TIẾP TỤC VỚI GOOGLE',
-            style: TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 12,
-              letterSpacing: 0.8,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

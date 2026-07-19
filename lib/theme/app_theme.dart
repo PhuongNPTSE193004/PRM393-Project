@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 const Color kNeon = Color(0xFF39FF14);
 const Color kBackground = Color(0xFF0B0F14);
 const Color kSurface = Color(0xFF121821);
+const Color kSurfaceCard = Color(0xFF161F2C);
 const Color kMuted = Color(0xFF8A9199);
 
 ThemeData buildTheme() {
@@ -28,7 +29,9 @@ ThemeData buildTheme() {
         foregroundColor: kBackground,
         elevation: 0,
         shadowColor: Colors.transparent,
-        shape: const RoundedRectangleBorder(),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
         textStyle: const TextStyle(
           fontFamily: 'monospace',
           fontWeight: FontWeight.w700,
@@ -38,14 +41,21 @@ ThemeData buildTheme() {
       ),
     ),
 
-    inputDecorationTheme: const InputDecorationTheme(
+    inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: kSurface,
-      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: OutlineInputBorder(borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderSide: BorderSide.none),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+      ),
       focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: kNeon, width: 1),
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: kNeon, width: 1.5),
       ),
     ),
   );

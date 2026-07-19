@@ -118,70 +118,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () {
-              final uid = _uid;
-              if (uid == null) return;
-
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const CustomerProfileScreen(),
-                ),
-              );
-            },
-          ),
-          _IconButtonWithBadge(
-            icon: Icons.shopping_cart_outlined,
-            count: _cartItemCount,
-            onPressed: () async {
-              final uid = _uid;
-              if (uid == null) return;
-
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      CartScreen(uid: uid, cartService: _cartService),
-                ),
-              );
-              if (!mounted) return;
-              _loadCartCount();
-            },
-          ),
-          StreamBuilder<int>(
-            stream: _notificationService.getUnreadCount(_uid ?? ''),
-            builder: (context, snapshot) {
-              return _IconButtonWithBadge(
-                icon: Icons.notifications_outlined,
-                count: snapshot.data ?? 0,
-                badgeColor: Colors.redAccent,
-                badgeTextColor: Colors.white,
-                onPressed: () {
-                  final uid = _uid;
-                  if (uid == null) return;
-
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => NotificationsScreen(
-                        uid: uid,
-                        service: _notificationService,
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AboutScreen()),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Đăng xuất',
             onPressed: () => _logout(context),
           ),
         ],
@@ -190,29 +128,38 @@ class _ProductListScreenState extends State<ProductListScreen> {
         children: [
           // Search Bar
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: TextField(
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Tìm trang bị...',
-                hintStyle: TextStyle(color: Colors.white54),
-                prefixIcon: Icon(Icons.search, color: Colors.white54),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm trang bị Airsoft...',
+                hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+                prefixIcon: const Icon(Icons.search_rounded, color: kNeon, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, color: Colors.white54, size: 18),
+                        onPressed: () => setState(() => _searchQuery = ''),
+                      )
+                    : null,
                 filled: true,
-                fillColor: Colors.black26,
+                fillColor: kSurfaceCard,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white24),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: kNeon),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: kNeon, width: 1.5),
                 ),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
 
-          // Categories
+          // Categories Horizontal Chips
           SizedBox(
-            height: 40,
+            height: 38,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -222,14 +169,16 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Filters (Price Slider & Checkbox)
+          // Filter Panel (Price Slider & Stock Checkbox)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white24),
+              color: kSurfaceCard,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,59 +187,90 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'GIÁ TỐI ĐA',
+                      'KHOẢNG GIÁ TỐI ĐA',
                       style: TextStyle(
-                        color: Colors.white54,
+                        color: kMuted,
                         fontSize: 10,
                         fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                    Text(
-                      '${(_maxPrice / 1000000).toStringAsFixed(1)}M ₫',
-                      style: const TextStyle(
-                        color: kNeon,
-                        fontSize: 10,
-                        fontFamily: 'monospace',
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: kNeon.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${(_maxPrice / 1000000).toStringAsFixed(1)}M ₫',
+                        style: const TextStyle(
+                          color: kNeon,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ),
                   ],
                 ),
-                Slider(
-                  value: _maxPrice,
-                  min: 500000,
-                  max: 20000000,
-                  divisions: 39,
-                  activeColor: kNeon,
-                  onChanged: (v) => setState(() => _maxPrice = v),
+                SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                  ),
+                  child: Slider(
+                    value: _maxPrice,
+                    min: 500000,
+                    max: 20000000,
+                    divisions: 39,
+                    activeColor: kNeon,
+                    inactiveColor: Colors.white12,
+                    onChanged: (v) => setState(() => _maxPrice = v),
+                  ),
                 ),
                 Row(
                   children: [
-                    Checkbox(
-                      value: _inStockOnly,
-                      activeColor: kNeon,
-                      checkColor: Colors.black,
-                      onChanged: (v) =>
-                          setState(() => _inStockOnly = v ?? false),
+                    SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: Checkbox(
+                        value: _inStockOnly,
+                        activeColor: kNeon,
+                        checkColor: Colors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        onChanged: (v) =>
+                            setState(() => _inStockOnly = v ?? false),
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     const Text(
-                      'Chỉ hàng còn sẵn',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
+                      'Chỉ hiển thị sản phẩm còn sẵn hàng',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
 
-          // Grid View
+          // Grid View Catalog
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(color: kNeon),
+                  )
                 : products.isEmpty
                 ? const Center(
                     child: Text(
-                      'No matches found',
-                      style: TextStyle(color: Colors.white54),
+                      'Không tìm thấy sản phẩm phù hợp',
+                      style: TextStyle(color: Colors.white54, fontFamily: 'monospace'),
                     ),
                   )
                 : GridView.builder(
@@ -298,9 +278,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 0.75, // Adjust card proportion here
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 0.70,
                         ),
                     itemCount: products.length,
                     itemBuilder: (context, index) {
@@ -345,6 +325,109 @@ class _ProductListScreenState extends State<ProductListScreen> {
         },
         child: const Icon(Icons.chat_bubble_outline),
       ),
+      bottomNavigationBar: StreamBuilder<int>(
+        stream: _notificationService.getUnreadCount(_uid ?? ''),
+        builder: (context, notifSnapshot) {
+          final notifCount = notifSnapshot.data ?? 0;
+          return Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: BottomNavigationBar(
+              currentIndex: 0,
+              backgroundColor: kSurface,
+              selectedItemColor: kNeon,
+              unselectedItemColor: Colors.white54,
+              type: BottomNavigationBarType.fixed,
+              selectedLabelStyle: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 10,
+              ),
+              onTap: (index) async {
+                final uid = _uid;
+
+                if (index == 1) {
+                  // Notifications
+                  if (uid == null) return;
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => NotificationsScreen(
+                        uid: uid,
+                        service: _notificationService,
+                      ),
+                    ),
+                  );
+                } else if (index == 2) {
+                  // Cart
+                  if (uid == null) return;
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CartScreen(
+                        uid: uid,
+                        cartService: _cartService,
+                      ),
+                    ),
+                  );
+                  if (mounted) _loadCartCount();
+                } else if (index == 3) {
+                  // Location / About
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AboutScreen()),
+                  );
+                } else if (index == 4) {
+                  // Profile
+                  if (uid == null) return;
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CustomerProfileScreen(),
+                    ),
+                  );
+                }
+              },
+              items: [
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.storefront),
+                  label: 'Cửa hàng',
+                ),
+                BottomNavigationBarItem(
+                  icon: _BottomBarIconWithBadge(
+                    icon: Icons.notifications_outlined,
+                    count: notifCount,
+                    badgeColor: Colors.redAccent,
+                    badgeTextColor: Colors.white,
+                  ),
+                  label: 'Thông báo',
+                ),
+                BottomNavigationBarItem(
+                  icon: _BottomBarIconWithBadge(
+                    icon: Icons.shopping_cart_outlined,
+                    count: _cartItemCount,
+                  ),
+                  label: 'Giỏ hàng',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.location_on_outlined),
+                  label: 'Vị trí',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  label: 'Tài khoản',
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -352,21 +435,36 @@ class _ProductListScreenState extends State<ProductListScreen> {
     final isSelected = _selectedCategory == slug;
     return GestureDetector(
       onTap: () => setState(() => _selectedCategory = slug),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? kNeon : Colors.transparent,
-          border: Border.all(color: isSelected ? kNeon : Colors.white24),
+          color: isSelected ? kNeon : kSurfaceCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? kNeon : Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: kNeon.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Center(
           child: Text(
             label.toUpperCase(),
             style: TextStyle(
-              color: isSelected ? Colors.black : Colors.white54,
+              color: isSelected ? Colors.black : Colors.white70,
               fontSize: 10,
               fontWeight: FontWeight.bold,
               fontFamily: 'monospace',
+              letterSpacing: 0.5,
             ),
           ),
         ),
@@ -394,17 +492,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 }
 
-class _IconButtonWithBadge extends StatelessWidget {
+class _BottomBarIconWithBadge extends StatelessWidget {
   final IconData icon;
   final int count;
-  final VoidCallback onPressed;
   final Color badgeColor;
   final Color badgeTextColor;
 
-  const _IconButtonWithBadge({
+  const _BottomBarIconWithBadge({
     required this.icon,
     required this.count,
-    required this.onPressed,
     this.badgeColor = kNeon,
     this.badgeTextColor = Colors.black,
   });
@@ -412,16 +508,16 @@ class _IconButtonWithBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
-      alignment: Alignment.center,
+      clipBehavior: Clip.none,
       children: [
-        IconButton(icon: Icon(icon), onPressed: onPressed),
+        Icon(icon),
         if (count > 0)
           Positioned(
-            top: 8,
-            right: 8,
+            top: -4,
+            right: -6,
             child: Container(
-              padding: const EdgeInsets.all(3),
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              padding: const EdgeInsets.all(2),
+              constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
               decoration: BoxDecoration(
                 color: badgeColor,
                 shape: BoxShape.circle,
@@ -431,7 +527,7 @@ class _IconButtonWithBadge extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: badgeTextColor,
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: FontWeight.bold,
                 ),
               ),

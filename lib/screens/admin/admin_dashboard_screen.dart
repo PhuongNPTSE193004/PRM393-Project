@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../services/seed_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
 import 'admin_chat_list_screen.dart';
@@ -66,6 +67,33 @@ class AdminDashboardScreen extends StatelessWidget {
                     ),
                   ),
                 );
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildMenuTile(
+              context: context,
+              icon: Icons.cloud_upload_outlined,
+              title: 'SEED CATALOG DATA',
+              subtitle: 'Populate database with sample Airsoft products & promos',
+              onTap: () async {
+                try {
+                  await SeedService().seedInitialData(force: true);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Catalog seed data populated successfully!'),
+                      backgroundColor: kNeon,
+                    ),
+                  );
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to seed data: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
             ),
           ],
