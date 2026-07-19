@@ -9,4 +9,6 @@ class CartItem {
     required this.product,
     required this.quantity,
   });
+
+  double get subtotal => product.price * quantity;
 }

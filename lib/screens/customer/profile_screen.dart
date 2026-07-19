@@ -229,91 +229,92 @@ class _OrderCard extends StatelessWidget {
     final createdAt = _formatDate(data['created_at']);
 
     return Container(
-      decoration: BoxDecoration(
+      decoration: BoxDecoration(border: Border.all(color: Colors.white12)),
+      child: Material(
         color: kSurface,
-        border: Border.all(color: Colors.white12),
-      ),
-      child: ExpansionTile(
-        collapsedIconColor: Colors.white54,
-        iconColor: kNeon,
-        title: Text(
-          'Đơn #${orderDoc.id.substring(0, 8)}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(
-          '$createdAt • ${status.toUpperCase()} • ${paymentMethod.toUpperCase()}',
-          style: const TextStyle(color: Colors.white54, fontSize: 12),
-        ),
-        trailing: Text(
-          formatVnd(total),
-          style: const TextStyle(color: kNeon, fontWeight: FontWeight.bold),
-        ),
-        children: [
-          const Divider(height: 1, color: Colors.white12),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              future: FirebaseFirestore.instance
-                  .collection('order_items')
-                  .where('order_id', isEqualTo: orderDoc.id)
-                  .get(),
-              builder: (context, itemsSnapshot) {
-                if (itemsSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: LinearProgressIndicator(color: kNeon),
-                  );
-                }
-
-                final items = itemsSnapshot.data?.docs ?? const [];
-                if (items.isEmpty) {
-                  return const Text(
-                    'Không có dữ liệu sản phẩm cho đơn này.',
-                    style: TextStyle(color: Colors.white54),
-                  );
-                }
-
-                return Column(
-                  children: items.map((itemDoc) {
-                    final item = itemDoc.data();
-                    final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
-                    final unitPrice =
-                        (item['unit_price'] as num?)?.toDouble() ?? 0;
-                    final productName =
-                        (item['product_name'] as String?) ?? 'Sản phẩm';
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.shopping_bag_outlined,
-                            color: Colors.white54,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '$productName x$quantity',
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                          Text(
-                            formatVnd(unitPrice * quantity),
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
+        child: ExpansionTile(
+          collapsedIconColor: Colors.white54,
+          iconColor: kNeon,
+          title: Text(
+            'Đơn #${orderDoc.id.substring(0, 8)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ],
+          subtitle: Text(
+            '$createdAt • ${status.toUpperCase()} • ${paymentMethod.toUpperCase()}',
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          trailing: Text(
+            formatVnd(total),
+            style: const TextStyle(color: kNeon, fontWeight: FontWeight.bold),
+          ),
+          children: [
+            const Divider(height: 1, color: Colors.white12),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                future: FirebaseFirestore.instance
+                    .collection('order_items')
+                    .where('order_id', isEqualTo: orderDoc.id)
+                    .get(),
+                builder: (context, itemsSnapshot) {
+                  if (itemsSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: LinearProgressIndicator(color: kNeon),
+                    );
+                  }
+
+                  final items = itemsSnapshot.data?.docs ?? const [];
+                  if (items.isEmpty) {
+                    return const Text(
+                      'Không có dữ liệu sản phẩm cho đơn này.',
+                      style: TextStyle(color: Colors.white54),
+                    );
+                  }
+
+                  return Column(
+                    children: items.map((itemDoc) {
+                      final item = itemDoc.data();
+                      final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
+                      final unitPrice =
+                          (item['unit_price'] as num?)?.toDouble() ?? 0;
+                      final productName =
+                          (item['product_name'] as String?) ?? 'Sản phẩm';
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.shopping_bag_outlined,
+                              color: Colors.white54,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '$productName x$quantity',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                            Text(
+                              formatVnd(unitPrice * quantity),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
