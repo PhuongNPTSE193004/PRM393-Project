@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/product.dart';
 import '../../theme/app_theme.dart';
@@ -135,23 +136,85 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
           key: _formKey,
           child: Column(
             children: [
-              _buildTextField(_nameCtrl, 'Tên sản phẩm', required: true),
+              _buildTextField(
+                _nameCtrl,
+                'Tên sản phẩm',
+                required: true,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên sản phẩm';
+                  if (v.trim().length < 3) return 'Tên sản phẩm phải từ 3 ký tự trở lên';
+                  return null;
+                },
+              ),
               const SizedBox(height: 12),
-              _buildTextField(_brandCtrl, 'Thương hiệu (Brand)'),
+              _buildTextField(
+                _brandCtrl,
+                'Thương hiệu (Brand)',
+                required: true,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Vui lòng nhập thương hiệu' : null,
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _buildTextField(_priceCtrl, 'Giá (VND)', isNumber: true, required: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      _priceCtrl,
+                      'Giá (VND)',
+                      isNumber: true,
+                      required: true,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Nhập giá';
+                        final val = double.tryParse(v.trim());
+                        if (val == null || val <= 0) return 'Giá phải lớn hơn 0';
+                        return null;
+                      },
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildTextField(_stockCtrl, 'Số lượng kho', isNumber: true, required: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      _stockCtrl,
+                      'Số lượng kho',
+                      isNumber: true,
+                      required: true,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Nhập số lượng';
+                        final val = int.tryParse(v.trim());
+                        if (val == null || val < 0) return 'Số lượng từ 0 trở lên';
+                        return null;
+                      },
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _buildTextField(_fpsCtrl, 'Tốc độ đạn (FPS)', isNumber: true)),
+                  Expanded(
+                    child: _buildTextField(
+                      _fpsCtrl,
+                      'Tốc độ đạn (FPS)',
+                      isNumber: true,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      validator: (v) {
+                        if (v != null && v.trim().isNotEmpty) {
+                          final val = int.tryParse(v.trim());
+                          if (val == null || val < 100 || val > 700) return 'FPS từ 100-700';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildTextField(_categoryCtrl, 'Mã danh mục (AEG/GBB/Sniper)')),
+                  Expanded(
+                    child: _buildTextField(
+                      _categoryCtrl,
+                      'Mã danh mục (aeg/gbb/sniper/gear)',
+                      required: true,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -189,15 +252,19 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     bool isNumber = false,
     bool required = false,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      inputFormatters: inputFormatters,
       maxLines: maxLines,
       style: const TextStyle(color: Colors.white),
-      validator: required
-          ? (v) => (v == null || v.trim().isEmpty) ? 'Vui lòng nhập trường này' : null
-          : null,
+      validator: validator ??
+          (required
+              ? (v) => (v == null || v.trim().isEmpty) ? 'Vui lòng nhập trường này' : null
+              : null),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),

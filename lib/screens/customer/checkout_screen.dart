@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -35,6 +34,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _loading = true;
   bool _submitting = false;
 
+  final _formKey = GlobalKey<FormState>();
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
 
@@ -336,6 +336,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _submitOrder() async {
+    if (!_formKey.currentState!.validate()) return;
+
     final uid = widget.uid ?? _auth.currentUser?.uid;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -474,6 +476,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Form(
+              key: _formKey,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -482,29 +485,55 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     style: TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
+                  TextFormField(
                     controller: _nameCtrl,
                     style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Họ và tên'),
+                    decoration: _inputDecoration('Họ và tên người nhận'),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Vui lòng nhập họ và tên';
+                      if (v.trim().length < 2) return 'Họ tên phải có ít nhất 2 ký tự';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 8),
-                  TextField(
+                  TextFormField(
                     controller: _phoneCtrl,
                     style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Số điện thoại'),
+                    decoration: _inputDecoration('Số điện thoại (VD: 0901234567)'),
                     keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11),
+                    ],
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Vui lòng nhập số điện thoại';
+                      final phone = v.trim();
+                      if (!RegExp(r'^0\d{9,10}$').hasMatch(phone)) {
+                        return 'Số điện thoại không hợp lệ (10-11 chữ số, bắt đầu bằng 0)';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 8),
-                  TextField(
+                  TextFormField(
                     controller: _addressCtrl,
                     style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Địa chỉ'),
+                    decoration: _inputDecoration('Địa chỉ (Số nhà, tên đường...)'),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Vui lòng nhập địa chỉ giao hàng';
+                      if (v.trim().length < 5) return 'Địa chỉ phải cụ thể hơn (tối thiểu 5 ký tự)';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 8),
-                  TextField(
+                  TextFormField(
                     controller: _cityCtrl,
                     style: const TextStyle(color: Colors.white),
                     decoration: _inputDecoration('Tỉnh / Thành phố'),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tỉnh / thành phố';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
 

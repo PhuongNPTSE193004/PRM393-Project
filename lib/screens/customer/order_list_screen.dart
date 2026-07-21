@@ -60,7 +60,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   );
                 }
 
-                var docs = snapshot.data?.docs ?? [];
+                final docs = snapshot.data?.docs ?? [];
                 var orders = docs.map((d) => OrderModel.fromFirestore(d)).toList();
 
                 // Client side sorting by createdAt descending
@@ -109,7 +109,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: filters.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final f = filters[index];
           final isSelected = _selectedFilter == f['key'];
