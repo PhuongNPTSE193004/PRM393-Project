@@ -378,10 +378,13 @@ class CustomerProfileScreen extends StatelessWidget {
     // Status translations & colors
     String statusText = 'Đang xử lý';
     Color statusColor = Colors.amber;
-    if (status == 'delivered' || status == 'completed' || status == 'success') {
+    if (status == 'paid') {
+      statusText = 'Đã thanh toán';
+      statusColor = Colors.greenAccent;
+    } else if (status == 'delivered' || status == 'completed' || status == 'success') {
       statusText = 'Đã giao';
       statusColor = kNeon;
-    } else if (status == 'shipping' || status == 'delivering') {
+    } else if (status == 'shipping' || status == 'delivering' || status == 'shipped') {
       statusText = 'Đang giao';
       statusColor = Colors.orangeAccent;
     } else if (status == 'cancelled') {

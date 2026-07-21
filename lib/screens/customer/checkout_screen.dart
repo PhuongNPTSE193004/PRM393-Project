@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -42,6 +44,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   List<_CartLine> _items = [];
 
+  late AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
+  Completer<bool>? _paymentCompleter;
+
   double get _subtotal =>
       _items.fold(0.0, (s, i) => s + i.unitPrice * i.quantity);
   double get _shipping => _subtotal > 0 ? 50000 : 0;
@@ -51,6 +57,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void initState() {
     super.initState();
     _loadProfileAndCart();
+    _initDeepLinks();
+  }
+
+  void _initDeepLinks() {
+    _appLinks = AppLinks();
+    _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+      if (uri.scheme == 'airsoftshop' && uri.host == 'payment_result') {
+        final resultCode = uri.queryParameters['resultCode'];
+        if (_paymentCompleter != null && !_paymentCompleter!.isCompleted) {
+          _paymentCompleter!.complete(resultCode == '0');
+        }
+      }
+    });
   }
 
   Future<void> _loadProfileAndCart() async {
@@ -192,7 +211,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final requestId = 'req_${DateTime.now().millisecondsSinceEpoch}';
     final amountInt = amount.toInt();
     final orderInfo = 'Thanh toán đơn hàng AirsoftGear #$orderId';
-    const redirectUrl = 'https://momo.vn';
+    const redirectUrl = 'airsoftshop://payment_result';
     const ipnUrl = 'https://momo.vn';
     const requestType = 'captureWallet';
     const extraData = '';
@@ -366,8 +385,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           // 1. Try direct MoMo Sandbox V2 Gateway API call
           final payUrl = await _createDirectMomoPaymentUrl(demoOrderId, _total);
           final uri = Uri.parse(payUrl);
+
+          _paymentCompleter = Completer<bool>();
+
           if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-            paidSuccess = true;
+            // Wait for the deep link callback from MoMo
+            paidSuccess = await _paymentCompleter!.future;
           }
         } catch (e) {
           // 2. Fallback for Web CORS or API fetch restrictions
@@ -452,6 +475,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   void dispose() {
+    _linkSubscription?.cancel();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _addressCtrl.dispose();
