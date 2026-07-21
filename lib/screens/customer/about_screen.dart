@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../theme/app_theme.dart';
 
 class AboutScreen extends StatelessWidget {
@@ -126,6 +128,29 @@ class AboutScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
             const Text(
+              'GIỜ HOẠT ĐỘNG',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+                fontFamily: 'monospace',
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.access_time, color: kNeon),
+              title: Text(
+                '8:00 AM - 9:00 PM (Thứ 2 - Chủ Nhật)',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+            const Text(
               'ĐỊA CHỈ',
               style: TextStyle(
                 color: Colors.white54,
@@ -135,6 +160,40 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            Container(
+              height: 250,
+              decoration: BoxDecoration(
+                border: Border.all(color: kNeon.withOpacity(0.5)),
+                color: kBackground,
+              ),
+              child: FlutterMap(
+                options: const MapOptions(
+                  initialCenter: LatLng(10.7725, 106.6980),
+                  initialZoom: 16.0,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.airsoft_shop',
+                  ),
+                  const MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: LatLng(10.7725, 106.6980),
+                        width: 40,
+                        height: 40,
+                        child: Icon(
+                          Icons.location_on,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             InkWell(
               onTap: () => _openMap(context),
               child: Container(
