@@ -2,11 +2,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../repositories/firebase/firestore_cart_repository.dart';
 import '../../repositories/firebase/firestore_notification_repository.dart';
+import '../../repositories/firebase/firestore_product_repository.dart';
+import '../../services/cart_service.dart';
 import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
 import 'about_screen.dart';
+import 'cart_screen.dart';
 import 'chat_screen.dart';
 import 'notifications_screen.dart';
 import 'order_list_screen.dart';
@@ -23,14 +27,22 @@ class CustomerProfileScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: kBackground,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kNeon, size: 20),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              Navigator.of(context).pushReplacementNamed('/');
+            }
+          },
+        ),
         title: const Text(
           'TÀI KHOẢN',
           style: TextStyle(
-            fontFamily: 'monospace',
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
             color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
             letterSpacing: 1.2,
           ),
         ),
@@ -184,6 +196,83 @@ class CustomerProfileScreen extends StatelessWidget {
                 },
               ),
             ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: 3,
+          backgroundColor: kSurface,
+          selectedItemColor: kNeon,
+          unselectedItemColor: Colors.white54,
+          type: BottomNavigationBarType.fixed,
+          selectedLabelStyle: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 10,
+          ),
+          onTap: (index) {
+            if (index == 0) {
+              Navigator.of(context).pushReplacementNamed('/');
+            } else if (index == 1) {
+              final uid = user?.uid;
+              if (uid != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => NotificationsScreen(
+                      uid: uid,
+                      service: NotificationService(FirestoreNotificationRepository()),
+                    ),
+                  ),
+                );
+              }
+            } else if (index == 2) {
+              final uid = user?.uid;
+              if (uid != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CartScreen(
+                      uid: uid,
+                      cartService: CartService(FirestoreCartRepository(FirestoreProductRepository())),
+                    ),
+                  ),
+                );
+              }
+            }
+          },
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.storefront_outlined),
+              activeIcon: Icon(Icons.storefront),
+              label: 'Cửa hàng',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.notifications_outlined),
+              activeIcon: Icon(Icons.notifications),
+              label: 'Thông báo',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart_outlined),
+              activeIcon: Icon(Icons.shopping_cart),
+              label: 'Giỏ hàng',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              activeIcon: Icon(Icons.person),
+              label: 'Tài khoản',
+            ),
+          ],
+        ),
+      ),
     );
   }
 
