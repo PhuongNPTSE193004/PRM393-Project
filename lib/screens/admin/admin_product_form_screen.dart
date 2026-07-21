@@ -38,7 +38,7 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     _brandCtrl = TextEditingController(text: p?.brand ?? 'Tokyo Marui');
     _priceCtrl = TextEditingController(text: p != null ? p.price.toStringAsFixed(0) : '5000000');
     _stockCtrl = TextEditingController(text: p != null ? p.stock.toString() : '10');
-    _fpsCtrl = TextEditingController(text: p?.fps != null ? p.fps.toString() : '380');
+    _fpsCtrl = TextEditingController(text: p?.fps?.toString() ?? '380');
     _categoryCtrl = TextEditingController(text: p?.categorySlug ?? 'aeg');
     _imageCtrl = TextEditingController(
       text: p != null && p.images.isNotEmpty ? p.images.first : '',
