@@ -12,14 +12,16 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Auto-seed initial catalog data if database is empty
-  try {
-    await SeedService().seedInitialData();
-  } catch (e) {
-    debugPrint('Seed check exception: $e');
-  }
-
   runApp(const MyApp());
+
+  // Auto-seed initial catalog data asynchronously after UI initializes
+  Future.microtask(() async {
+    try {
+      await SeedService().seedInitialData();
+    } catch (e) {
+      debugPrint('Seed check exception: $e');
+    }
+  });
 }
 
 class MyApp extends StatelessWidget {
