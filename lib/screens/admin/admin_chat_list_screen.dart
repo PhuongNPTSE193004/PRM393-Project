@@ -47,10 +47,41 @@ class _AdminChatListScreenState extends State<AdminChatListScreen> {
           }
 
           if (snapshot.hasError) {
+            final isPermission = snapshot.error.toString().contains('permission-denied');
             return Center(
-              child: Text(
-                'Lỗi tải hộp thư: ${snapshot.error}',
-                style: const TextStyle(color: Colors.redAccent),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.shield_outlined, color: Colors.amber, size: 48),
+                    const SizedBox(height: 12),
+                    Text(
+                      isPermission
+                          ? 'CẦN CẤP QUYỀN FIRESTORE RULES'
+                          : 'LỖI TẢI HỘP THƯ',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isPermission
+                          ? 'Firebase Security Rules cần cho phép tài khoản Admin/Staff đọc collection "chats". Vui lòng cập nhật Rules trên Firebase Console.'
+                          : '${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: kMuted,
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }

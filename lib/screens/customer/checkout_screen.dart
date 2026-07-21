@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -12,12 +13,7 @@ import '../../utils/formatters.dart';
 import '../../models/cart_item.dart';
 import '../../models/product.dart';
 
-/// Checkout screen with Firestore order creation and Momo sandbox integration.
-///
-/// This screen will call a local demo Momo server (running under
-/// `tools/momo-server`) to create a payment and open the resulting `payUrl`.
-/// For Android emulator the demo server base is `http://10.0.2.2:3000` by
-/// default; change to your machine IP when testing on a physical device.
+/// Checkout screen with Firestore order creation and direct Momo sandbox integration.
 class CheckoutScreen extends StatefulWidget {
   final String? uid;
   final CartService? cartService;
@@ -42,9 +38,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
 
-  // TODO: for emulator use 10.0.2.2, for web or iOS use localhost
-  static const _momoBase = 'http://localhost:3000';
-
   List<_CartLine> _items = [];
 
   double get _subtotal =>
@@ -55,12 +48,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCartItems();
+    _loadProfileAndCart();
   }
 
-  Future<void> _loadCartItems() async {
-    setState(() => _loading = true);
-
+  Future<void> _loadProfileAndCart() async {
     final uid = widget.uid ?? _auth.currentUser?.uid;
     if (uid == null) {
       setState(() => _loading = false);
@@ -68,6 +59,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     try {
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        _nameCtrl.text = data['displayName'] ?? '';
+        _phoneCtrl.text = data['phone'] ?? '';
+        _addressCtrl.text = data['address'] ?? '';
+      }
+
+      // 1. Load via CartService if available
       if (widget.cartService != null) {
         final items = await widget.cartService!.getCartItems(uid);
         final lines = items
@@ -80,6 +80,49 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             )
             .toList();
+        if (lines.isNotEmpty) {
+          if (!mounted) return;
+          setState(() {
+            _items = lines;
+            _loading = false;
+          });
+          return;
+        }
+      }
+
+      // 2. Query users/{uid}/cart subcollection (standard repository path)
+      final userCartSnap =
+          await _firestore.collection('users').doc(uid).collection('cart').get();
+      if (userCartSnap.docs.isNotEmpty) {
+        final lines = <_CartLine>[];
+        for (var doc in userCartSnap.docs) {
+          final data = doc.data();
+          final productSlug = data['productSlug'] as String? ?? doc.id;
+          final qty = (data['quantity'] as num?)?.toInt() ?? 1;
+
+          final prodDoc =
+              await _firestore.collection('products').doc(productSlug).get();
+          if (prodDoc.exists) {
+            final prodData = prodDoc.data()!;
+            final prod = Product(
+              slug: prodData['slug'] ?? prodDoc.id,
+              name: prodData['name'] ?? prodData['title'] ?? 'Unknown',
+              brand: prodData['brand'],
+              price: (prodData['price'] as num?)?.toDouble() ?? 0,
+              rating: (prodData['rating'] as num?)?.toDouble() ?? 0,
+              fps: (prodData['fps'] as num?)?.toInt(),
+              stock: (prodData['stock'] as num?)?.toInt() ?? 0,
+              categorySlug: prodData['categorySlug'] ?? '',
+              images: List<String>.from(prodData['images'] ?? []),
+            );
+            lines.add(_CartLine(
+              id: doc.id,
+              product: prod,
+              quantity: qty,
+              unitPrice: prod.price,
+            ));
+          }
+        }
         if (!mounted) return;
         setState(() {
           _items = lines;
@@ -88,56 +131,105 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
-      final snap = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('cart')
-          .get();
+      // 3. Query legacy top-level carts/{uid}
+      final cartDoc = await _firestore.collection('carts').doc(uid).get();
+      if (cartDoc.exists) {
+        final cartData = cartDoc.data()!;
+        final rawItems = (cartData['items'] as List<dynamic>?) ?? [];
 
-      final lines = await Future.wait(
-        snap.docs.map((doc) async {
-          final data = doc.data();
-          final productSlug = data['productSlug'] as String? ?? doc.id;
-          final qty = (data['quantity'] as num?)?.toInt() ?? 1;
-          final prodDoc = await _firestore
-              .collection('products')
-              .doc(productSlug)
-              .get();
-          final prodData = prodDoc.exists
-              ? prodDoc.data()!
-              : <String, dynamic>{};
+        final lines = <_CartLine>[];
+        for (var map in rawItems) {
+          final item = map as Map<String, dynamic>;
+          final prodId = item['product_id'] as String?;
+          final q = (item['quantity'] as num?)?.toInt() ?? 1;
 
-          final product = Product(
-            slug: prodData['slug'] ?? prodDoc.id,
-            name: prodData['name'] ?? prodData['title'] ?? 'Unknown',
-            price: (prodData['price'] as num?)?.toDouble() ?? 0,
-            rating: (prodData['rating'] as num?)?.toDouble() ?? 0,
-            fps: prodData['fps'],
-            stock: (prodData['stock'] as num?)?.toInt() ?? 0,
-            categorySlug: prodData['categorySlug'] ?? '',
-            images: List<String>.from(prodData['images'] ?? []),
-          );
-
-          return _CartLine(
-            id: doc.id,
-            product: product,
-            quantity: qty,
-            unitPrice: product.price,
-          );
-        }),
-      );
-
-      if (!mounted) return;
-      setState(() {
+          if (prodId != null) {
+            final pDoc =
+                await _firestore.collection('products').doc(prodId).get();
+            if (pDoc.exists) {
+              final prodData = pDoc.data()!;
+              final prod = Product(
+                slug: prodData['slug'] ?? pDoc.id,
+                name: prodData['name'] ?? prodData['title'] ?? 'Unknown',
+                brand: prodData['brand'],
+                price: (prodData['price'] as num?)?.toDouble() ?? 0,
+                rating: (prodData['rating'] as num?)?.toDouble() ?? 0,
+                fps: (prodData['fps'] as num?)?.toInt(),
+                stock: (prodData['stock'] as num?)?.toInt() ?? 0,
+                categorySlug: prodData['categorySlug'] ?? '',
+                images: List<String>.from(prodData['images'] ?? []),
+              );
+              lines.add(_CartLine(
+                id: pDoc.id,
+                product: prod,
+                quantity: q,
+                unitPrice: prod.price,
+              ));
+            }
+          }
+        }
         _items = lines;
-        _loading = false;
-      });
+      }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Không thể tải giỏ hàng: $e')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Creates a MoMo Sandbox Payment URL directly using MoMo V2 Gateway API.
+  Future<String> _createDirectMomoPaymentUrl(String orderId, double amount) async {
+    const partnerCode = 'MOMO';
+    const accessKey = 'F8BBA842ECF85';
+    const secretKey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
+    const endpoint = 'https://test-payment.momo.vn/v2/gateway/api/create';
+
+    final requestId = 'req_${DateTime.now().millisecondsSinceEpoch}';
+    final amountInt = amount.toInt();
+    final orderInfo = 'Thanh toán đơn hàng AirsoftGear #$orderId';
+    const redirectUrl = 'https://momo.vn';
+    const ipnUrl = 'https://momo.vn';
+    const requestType = 'captureWallet';
+    const extraData = '';
+
+    final rawSignature =
+        'accessKey=$accessKey&amount=$amountInt&extraData=$extraData&ipnUrl=$ipnUrl&orderId=$orderId&orderInfo=$orderInfo&partnerCode=$partnerCode&redirectUrl=$redirectUrl&requestId=$requestId&requestType=$requestType';
+
+    final hmac = Hmac(sha256, utf8.encode(secretKey));
+    final signature = hmac.convert(utf8.encode(rawSignature)).toString();
+
+    final body = {
+      'partnerCode': partnerCode,
+      'accessKey': accessKey,
+      'requestId': requestId,
+      'amount': amountInt.toString(),
+      'orderId': orderId,
+      'orderInfo': orderInfo,
+      'redirectUrl': redirectUrl,
+      'ipnUrl': ipnUrl,
+      'extraData': extraData,
+      'requestType': requestType,
+      'signature': signature,
+    };
+
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final payUrl = json['payUrl'] as String?;
+      if (payUrl != null && payUrl.isNotEmpty) {
+        return payUrl;
+      }
+      throw Exception(json['message'] ?? 'Không lấy được link thanh toán MoMo');
+    } else {
+      throw Exception('Lỗi MoMo Sandbox (${response.statusCode}): ${response.body}');
     }
   }
 
@@ -161,41 +253,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       if (_payment == 'online') {
-        final demoOrderId = DateTime.now().millisecondsSinceEpoch.toString();
+        final demoOrderId = 'ORD_${DateTime.now().millisecondsSinceEpoch}';
 
-        final createRes = await http.post(
-          Uri.parse('$_momoBase/create_payment'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'orderId': demoOrderId,
-            'amount': _total,
-            'returnUrl': 'http://localhost:3000/payment/result',
-          }),
-        );
+        // 1. Generate direct MoMo Sandbox URL
+        final payUrl = await _createDirectMomoPaymentUrl(demoOrderId, _total);
 
-        if (createRes.statusCode != 200) {
-          throw Exception('Không thể tạo payment: ${createRes.body}');
-        }
-
-        final payload = jsonDecode(createRes.body) as Map<String, dynamic>;
-        final payUrl = payload['payUrl'] as String?;
-        if (payUrl == null) throw Exception('payUrl missing from server');
-
+        // 2. Open MoMo Sandbox Payment Gateway in browser
         final uri = Uri.parse(payUrl);
         if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-          throw Exception('Không thể mở trang thanh toán');
+          throw Exception('Không thể mở cổng thanh toán MoMo');
         }
 
-        final confirmed = await _pollPaymentStatus(demoOrderId);
-        if (!confirmed) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Thanh toán không xác nhận')),
-          );
-          setState(() => _submitting = false);
-          return;
-        }
-
+        // 3. Create order record in Firestore
         await _createOrderInFirestore(uid, paid: true);
       } else {
         await _createOrderInFirestore(uid, paid: false);
@@ -204,7 +273,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Đặt hàng thành công')));
+      ).showSnackBar(const SnackBar(content: Text('Đặt hàng thành công!')));
       Navigator.of(context).pushReplacementNamed('/profile');
     } catch (e) {
       if (!mounted) return;
@@ -214,22 +283,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
-  }
-
-  Future<bool> _pollPaymentStatus(String orderId) async {
-    const maxAttempts = 12;
-    const delayMs = 1500;
-    for (var i = 0; i < maxAttempts; i++) {
-      final res = await http.get(
-        Uri.parse('$_momoBase/check_payment?orderId=$orderId'),
-      );
-      if (res.statusCode == 200) {
-        final json = jsonDecode(res.body) as Map<String, dynamic>;
-        if (json['paid'] == true) return true;
-      }
-      await Future.delayed(const Duration(milliseconds: delayMs));
-    }
-    return false;
   }
 
   Future<void> _createOrderInFirestore(String uid, {required bool paid}) async {
