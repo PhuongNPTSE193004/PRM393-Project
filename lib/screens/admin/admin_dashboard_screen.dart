@@ -4,6 +4,8 @@ import '../../services/seed_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
 import 'admin_chat_list_screen.dart';
+import 'admin_order_list_screen.dart';
+import 'admin_product_list_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -51,6 +53,34 @@ class AdminDashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+            _buildMenuTile(
+              context: context,
+              icon: Icons.inventory_2_outlined,
+              title: 'PRODUCT MANAGEMENT',
+              subtitle: 'Create, edit, and delete Airsoft catalog products',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AdminProductListScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildMenuTile(
+              context: context,
+              icon: Icons.receipt_long_outlined,
+              title: 'ORDER MANAGEMENT',
+              subtitle: 'Manage customer orders and status updates',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AdminOrderListScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
             _buildMenuTile(
               context: context,
               icon: Icons.chat_bubble_outline,

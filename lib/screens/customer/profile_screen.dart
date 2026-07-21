@@ -9,6 +9,7 @@ import '../../utils/formatters.dart';
 import 'about_screen.dart';
 import 'chat_screen.dart';
 import 'notifications_screen.dart';
+import 'order_list_screen.dart';
 
 class CustomerProfileScreen extends StatelessWidget {
   const CustomerProfileScreen({super.key});
@@ -83,15 +84,38 @@ class CustomerProfileScreen extends StatelessWidget {
                           const SizedBox(height: 20),
 
                           // ─── Section 1: Đơn hàng gần đây ─────────────────
-                          const Text(
-                            'Đơn hàng gần đây',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Đơn hàng gần đây',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => OrderListScreen(uid: user.uid),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Xem tất cả',
+                                  style: TextStyle(
+                                    color: kNeon,
+                                    fontSize: 12,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
 
                           if (ordersSnapshot.connectionState == ConnectionState.waiting)
                             const Center(
@@ -278,14 +302,25 @@ class CustomerProfileScreen extends StatelessWidget {
 
     final code = doc.id.length >= 4 ? doc.id.substring(0, 4).toUpperCase() : doc.id.toUpperCase();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: kSurfaceCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
+    return InkWell(
+      onTap: () {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid == null) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => OrderListScreen(uid: uid),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: kSurfaceCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
       child: Row(
         children: [
           // Green Box Icon
@@ -356,6 +391,7 @@ class CustomerProfileScreen extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

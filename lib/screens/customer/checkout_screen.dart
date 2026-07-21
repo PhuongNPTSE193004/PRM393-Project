@@ -233,6 +233,108 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  Future<bool> _showMomoWebPaymentModal(String orderId) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            return AlertDialog(
+              backgroundColor: kSurfaceCard,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: kNeon.withValues(alpha: 0.3)),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFA50064),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'MoMo Sandbox Gateway',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.qr_code_scanner_rounded, size: 100, color: Colors.black),
+                        const SizedBox(height: 8),
+                        Text(
+                          'MÃ GD: #$orderId',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Số tiền:', style: TextStyle(color: kMuted)),
+                      Text(
+                        '${formatVnd(_total)}đ',
+                        style: const TextStyle(
+                          color: kNeon,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Cổng thanh toán thử nghiệm MoMo Sandbox cho phép bạn xác nhận hoàn tất giao dịch.',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Hủy', style: TextStyle(color: Colors.redAccent)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kNeon,
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('XÁC NHẬN ĐÃ THANH TOÁN'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
   Future<void> _submitOrder() async {
     final uid = widget.uid ?? _auth.currentUser?.uid;
     if (uid == null) {
@@ -254,14 +356,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       if (_payment == 'online') {
         final demoOrderId = 'ORD_${DateTime.now().millisecondsSinceEpoch}';
+        bool paidSuccess = false;
 
-        // 1. Generate direct MoMo Sandbox URL
-        final payUrl = await _createDirectMomoPaymentUrl(demoOrderId, _total);
+        try {
+          // 1. Try direct MoMo Sandbox V2 Gateway API call
+          final payUrl = await _createDirectMomoPaymentUrl(demoOrderId, _total);
+          final uri = Uri.parse(payUrl);
+          if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+            paidSuccess = true;
+          }
+        } catch (e) {
+          // 2. Fallback for Web CORS or API fetch restrictions
+          paidSuccess = await _showMomoWebPaymentModal(demoOrderId);
+        }
 
-        // 2. Open MoMo Sandbox Payment Gateway in browser
-        final uri = Uri.parse(payUrl);
-        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-          throw Exception('Không thể mở cổng thanh toán MoMo');
+        if (!paidSuccess) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Thanh toán MoMo đã bị hủy')),
+          );
+          setState(() => _submitting = false);
+          return;
         }
 
         // 3. Create order record in Firestore
