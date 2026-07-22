@@ -1,37 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../blocs/cart/cart_bloc.dart';
+import '../../blocs/cart/cart_event.dart';
+import '../../blocs/cart/cart_state.dart';
 import '../../models/product.dart';
-import '../../services/cart_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
-
-  /// Vietnamese display name for the product's category (e.g. "Súng trường"
-  /// for slug "rifles"). [Product] only stores [Product.categorySlug], so
-  /// the caller resolves the display name via ProductService/CategoryService
-  /// before navigating here — screens must not look up category names
-  /// directly from a repository.
   final String? categoryName;
-
-  /// Related products to show at the bottom of the screen, resolved by the
-  /// caller via ProductService.getRelatedProducts(...) before navigation.
-  /// Defaults to an empty list so the section simply hides itself if the
-  /// caller hasn't wired this up yet.
   final List<Product> relatedProducts;
-
-  /// Business logic for cart operations. Injected by the caller so this
-  /// screen never touches Firebase or repositories directly.
-  final CartService cartService;
-
-  /// Currently signed-in user's uid, used for cart operations.
   final String uid;
 
   const ProductDetailScreen({
     super.key,
     required this.product,
-    required this.cartService,
     required this.uid,
     this.categoryName,
     this.relatedProducts = const [],
@@ -45,7 +30,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
   int _selectedImageIndex = 0;
   bool _isFavorite = false;
-  bool _isAddingToCart = false;
 
   static const _kThumbnailSize = 60.0;
   static const _kBottomBarHeight = 80.0;
@@ -60,34 +44,53 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final product = widget.product;
 
-    return Scaffold(
-      backgroundColor: kBackground,
-      extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: _kBottomBarHeight + 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildImageCarousel(product),
-                _buildInfo(product),
-                _buildShippingBadges(),
-                _buildDescription(product),
-                _buildSpecs(product),
-                _buildQuantitySelector(product),
-                _buildRelatedProducts(),
-              ],
+    return BlocListener<CartBloc, CartState>(
+      listener: (context, state) {
+        if (state.status == CartStatus.success && state.error == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã thêm ${widget.product.name} vào giỏ hàng'),
+              backgroundColor: kNeon,
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomBar(),
-          ),
-        ],
+          );
+        } else if (state.status == CartStatus.failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.error ?? 'Lỗi thêm vào giỏ hàng'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: kBackground,
+        extendBodyBehindAppBar: true,
+        appBar: _buildAppBar(),
+        body: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: _kBottomBarHeight + 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildImageCarousel(product),
+                  _buildInfo(product),
+                  _buildShippingBadges(),
+                  _buildDescription(product),
+                  _buildSpecs(product),
+                  _buildQuantitySelector(product),
+                  _buildRelatedProducts(),
+                ],
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildBottomBar(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -406,7 +409,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     MaterialPageRoute(
                       builder: (_) => ProductDetailScreen(
                         product: widget.relatedProducts[i],
-                        cartService: widget.cartService,
                         uid: widget.uid,
                       ),
                     ),
@@ -425,102 +427,88 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget _buildBottomBar() {
     final bool outOfStock = widget.product.stock <= 0;
 
-    return Container(
-      height: _kBottomBarHeight,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        color: kBackground,
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: (outOfStock || _isAddingToCart) ? null : _addToCart,
-              icon: _isAddingToCart
-                  ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-                  : Icon(outOfStock ? Icons.block : Icons.shopping_cart_outlined, size: 18),
-              label: Text(outOfStock ? 'Hết hàng' : 'Thêm vào giỏ'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: outOfStock ? kMuted : Colors.white,
-                side: BorderSide(color: outOfStock ? Colors.white12 : Colors.white.withValues(alpha: 0.3)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(40),
-                ),
-              ),
+    return BlocBuilder<CartBloc, CartState>(
+      builder: (context, state) {
+        final isAdding = state.status == CartStatus.loading;
+        return Container(
+          height: _kBottomBarHeight,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          decoration: BoxDecoration(
+            color: kBackground,
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: (outOfStock || _isAddingToCart) ? null : _buyNow,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: outOfStock ? kSurfaceCard : kNeon,
-                foregroundColor: outOfStock ? kMuted : Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(40),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: (outOfStock || isAdding) ? null : _addToCart,
+                  icon: isAdding
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          outOfStock ? Icons.block : Icons.shopping_cart_outlined,
+                          size: 18),
+                  label: Text(outOfStock ? 'Hết hàng' : 'Thêm vào giỏ'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: outOfStock ? kMuted : Colors.white,
+                    side: BorderSide(
+                        color: outOfStock
+                            ? Colors.white12
+                            : Colors.white.withValues(alpha: 0.3)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40),
+                    ),
+                  ),
                 ),
               ),
-              child: Text(
-                outOfStock ? 'Tạm hết hàng' : 'Mua ngay',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: (outOfStock || isAdding) ? null : _buyNow,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: outOfStock ? kSurfaceCard : kNeon,
+                    foregroundColor: outOfStock ? kMuted : Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40),
+                    ),
+                  ),
+                  child: Text(
+                    outOfStock ? 'Tạm hết hàng' : 'Mua ngay',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   // ─── Cart actions ────────────────────────────────────────────────────────────
 
-  Future<void> _addToCart() async {
-    setState(() => _isAddingToCart = true);
-
-    try {
-      await widget.cartService.addToCart(
-        uid: widget.uid,
-        productSlug: widget.product.slug,
-        quantity: _quantity,
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã thêm ${widget.product.name} vào giỏ hàng'),
-          backgroundColor: kNeon,
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể thêm vào giỏ hàng. Vui lòng thử lại.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isAddingToCart = false);
-    }
+  void _addToCart() {
+    context.read<CartBloc>().add(
+          CartItemAdded(
+            uid: widget.uid,
+            productSlug: widget.product.slug,
+            quantity: _quantity,
+          ),
+        );
   }
 
-  Future<void> _buyNow() async {
-    // "Mua ngay" funnels through the same cart-add flow for now, since
-    // there is no OrderService/checkout flow yet. Once one exists, this
-    // should navigate straight to checkout with this single item instead.
-    await _addToCart();
-    // TODO: navigate to checkout screen once OrderService exists.
+  void _buyNow() {
+    _addToCart();
+    // TODO: navigate to checkout screen
   }
-
 }
 // ═══════════════════════════════════════════════════════════════════════════════
 

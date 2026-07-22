@@ -2,11 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../../repositories/firebase/firestore_cart_repository.dart';
-import '../../repositories/firebase/firestore_notification_repository.dart';
-import '../../repositories/firebase/firestore_product_repository.dart';
-import '../../services/cart_service.dart';
-import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
 import 'about_screen.dart';
@@ -90,12 +85,8 @@ class CustomerProfileScreen extends StatelessWidget {
                       return ListView(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         children: [
-                          // ─── User Header Card ─────────────────────────────
                           _buildUserHeaderCard(nameToShow, user.email ?? '', role),
-
                           const SizedBox(height: 20),
-
-                          // ─── Section 1: Đơn hàng gần đây ─────────────────
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -155,8 +146,6 @@ class CustomerProfileScreen extends StatelessWidget {
                             ...orders.take(3).map((doc) => _buildOrderTile(context, doc)),
 
                           const SizedBox(height: 20),
-
-                          // ─── Section 2: Tài khoản Options Card ────────────
                           const Text(
                             'Tài khoản',
                             style: TextStyle(
@@ -166,17 +155,10 @@ class CustomerProfileScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 12),
-
                           _buildAccountGroupCard(context, user),
-
                           const SizedBox(height: 24),
-
-                          // ─── Logout Button ────────────────────────────────
                           _buildLogoutButton(context),
-
                           const SizedBox(height: 20),
-
-                          // ─── App Footer Version ───────────────────────────
                           const Center(
                             child: Text(
                               'v1.0.0  ·  AIRSOFTGEAR VN',
@@ -230,7 +212,6 @@ class CustomerProfileScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => NotificationsScreen(
                       uid: uid,
-                      service: NotificationService(FirestoreNotificationRepository()),
                     ),
                   ),
                 );
@@ -242,7 +223,6 @@ class CustomerProfileScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => CartScreen(
                       uid: uid,
-                      cartService: CartService(FirestoreCartRepository(FirestoreProductRepository())),
                     ),
                   ),
                 );
@@ -276,7 +256,6 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  // ─── User Header Card Component ───────────────────────────────────────────
   Widget _buildUserHeaderCard(String name, String email, String role) {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'O';
 
@@ -296,7 +275,6 @@ class CustomerProfileScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Circle Avatar Initial
           Container(
             width: 54,
             height: 54,
@@ -317,7 +295,6 @@ class CustomerProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          // User Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,7 +339,6 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  // ─── Recent Order Tile Component ──────────────────────────────────────────
   Widget _buildOrderTile(BuildContext context, QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
     final total = (data['total'] as num?)?.toDouble() ?? 0;
@@ -375,7 +351,6 @@ class CustomerProfileScreen extends StatelessWidget {
       dateStr = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
     }
 
-    // Status translations & colors
     String statusText = 'Đang xử lý';
     Color statusColor = Colors.amber;
     if (status == 'paid') {
@@ -415,7 +390,6 @@ class CustomerProfileScreen extends StatelessWidget {
         ),
       child: Row(
         children: [
-          // Green Box Icon
           Container(
             width: 40,
             height: 40,
@@ -431,7 +405,6 @@ class CustomerProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          // Order ID & Date
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,7 +430,6 @@ class CustomerProfileScreen extends StatelessWidget {
               ],
             ),
           ),
-          // Price & Status
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -487,7 +459,6 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  // ─── Grouped Account Card ─────────────────────────────────────────────────
   Widget _buildAccountGroupCard(BuildContext context, User user) {
     return Container(
       decoration: BoxDecoration(
@@ -517,7 +488,6 @@ class CustomerProfileScreen extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (_) => NotificationsScreen(
                     uid: user.uid,
-                    service: NotificationService(FirestoreNotificationRepository()),
                   ),
                 ),
               );
@@ -570,7 +540,6 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  // ─── Single Account List Tile ──────────────────────────────────────────────
   Widget _buildAccountTile({
     required IconData icon,
     required String title,
@@ -603,7 +572,6 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  // ─── Red Logout Button ────────────────────────────────────────────────────
   Widget _buildLogoutButton(BuildContext context) {
     return Container(
       width: double.infinity,
