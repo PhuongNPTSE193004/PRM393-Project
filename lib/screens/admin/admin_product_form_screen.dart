@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../models/product.dart';
 import '../../theme/app_theme.dart';
@@ -29,6 +33,52 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   late TextEditingController _descCtrl;
 
   bool _isSaving = false;
+  bool _isUploadingImage = false;
+
+  Future<void> _pickAndUploadImage() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (image == null) return;
+
+      setState(() => _isUploadingImage = true);
+
+      final fileName = 'prod_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storageRef = FirebaseStorage.instance.ref().child('products/$fileName');
+
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        await storageRef.putData(bytes);
+      } else {
+        final file = File(image.path);
+        await storageRef.putFile(file);
+      }
+
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      setState(() {
+        _imageCtrl.text = downloadUrl;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tải hình ảnh lên thành công!'),
+          backgroundColor: kNeon,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi tải hình ảnh lên: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
+    }
+  }
 
   @override
   void initState() {
@@ -44,11 +94,15 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     _imageCtrl = TextEditingController(
       text: p != null && p.images.isNotEmpty ? p.images.first : '',
     );
+    _imageCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
     _descCtrl = TextEditingController(text: p?.description ?? '');
   }
 
   @override
   void dispose() {
+    _imageCtrl.removeListener(() {});
     _slugCtrl.dispose();
     _nameCtrl.dispose();
     _brandCtrl.dispose();
@@ -218,7 +272,62 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              _buildTextField(_imageCtrl, 'URL hình ảnh (https://...)'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: _buildTextField(_imageCtrl, 'URL hình ảnh (https://...)'),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    height: 54,
+                    child: ElevatedButton.icon(
+                      onPressed: _isUploadingImage ? null : _pickAndUploadImage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kSurfaceCard,
+                        foregroundColor: kNeon,
+                        side: const BorderSide(color: Colors.white12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: _isUploadingImage
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: kNeon),
+                            )
+                          : const Icon(Icons.cloud_upload_outlined),
+                      label: const Text('Tải ảnh lên', style: TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                    ),
+                  ),
+                ],
+              ),
+              if (_imageCtrl.text.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: kSurfaceCard,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      _imageCtrl.text.trim(),
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => const Center(
+                        child: Text(
+                          'Không thể xem trước hình ảnh',
+                          style: TextStyle(color: Colors.white38, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               _buildTextField(_descCtrl, 'Mô tả chi tiết sản phẩm', maxLines: 3),
               const SizedBox(height: 24),

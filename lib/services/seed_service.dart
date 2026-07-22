@@ -41,7 +41,8 @@ class SeedService {
         'warranty': '12 months',
         'description': 'Biểu tượng súng trường tấn công với gearbox v2 siêu bền từ Tokyo Marui. Độ chính xác tuyệt đối và độ ổn định cao.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fm4a1.jpg?alt=media',
+          'https://images.unsplash.com/photo-1595590424283-b8f17842773f?w=600&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -63,7 +64,8 @@ class SeedService {
         'warranty': '6 months',
         'description': 'Phiên bản AK-47 vỏ thép nguyên khối cùng ốp tay gỗ thật mang lại cảm giác chân thực và chắc chắn tuyệt đối.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fak47.jpg?alt=media',
+          'https://images.unsplash.com/photo-1599819811279-d5ad9cccf838?w=600&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1544640808-32ca72ac7f37?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -85,7 +87,8 @@ class SeedService {
         'warranty': '12 months',
         'description': 'Dòng HK416 khắc bản quyền Heckler & Koch chính hãng. Tích hợp sẵn MOSFET điều tốc và nòng chính xác 6.03mm.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fhk416.jpg?alt=media',
+          'https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=600&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1585123334904-845d60e97b29?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -108,7 +111,8 @@ class SeedService {
         'warranty': '6 months',
         'description': 'Súng lục gas blowback nhỏ gọn với lực giật (recoil) mạnh mẽ, khoá slide kim loại khắc logo sắc nét.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fglock19.jpg?alt=media',
+          'https://images.unsplash.com/photo-1590096598321-a42e180df3fe?w=600&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1602738328654-51ab2ae6c4ff?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -130,7 +134,8 @@ class SeedService {
         'warranty': '6 months',
         'description': 'Mẫu súng lục huyền thoại Thế chiến II làm hoàn toàn bằng kim loại, tương thích cả băng gas Green Gas và CO2.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fm1911.jpg?alt=media',
+          'https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=600&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1569762826621-0026e6d2230e?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -152,7 +157,8 @@ class SeedService {
         'warranty': '12 months',
         'description': 'Vua của các dòng súng lục Speedsoft với tốc độ xả đạn cực nhanh, các chi tiết mạ vàng sang trọng và chính xác tuyệt đỉnh.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fhicapa.jpg?alt=media',
+          'https://images.unsplash.com/photo-1583842761829-4245d7894246?w=600&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1590096598402-9907955c453d?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -161,7 +167,7 @@ class SeedService {
         'price': 6000000.0,
         'rating': 4.9,
         'fps': 480,
-        'stock': 0, // Set to 0 to test out-of-stock features
+        'stock': 0,
         'categorySlug': 'sniper',
         'brand': 'Tokyo Marui',
         'material': 'Polymer & Nòng Thép',
@@ -174,7 +180,8 @@ class SeedService {
         'warranty': '12 months',
         'description': 'Huyền thoại súng ngắm Airsoft. Nòng thép nguyên khối mạ đen cùng cơ chế kéo bolt êm ái, bóp cò cực nhạy.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fvsr10.jpg?alt=media',
+          'https://images.unsplash.com/photo-1615215682811-1a3b8364731f?w=600&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1508873696983-2df519f0397e?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -191,7 +198,8 @@ class SeedService {
         'battery': null,
         'description': 'Mẫu súng bắn đai bệ tì má điều chỉnh độ cao linh hoạt, đi kèm chân chống bipod và ống ngắm 3-9x40.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fl96.jpg?alt=media',
+          'https://images.unsplash.com/photo-1512849069474-7551ab772252?w=600&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1616788494707-ec28f08d05a1?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -208,7 +216,7 @@ class SeedService {
         'battery': null,
         'description': 'Áo giáp bảo vệ siêu nhẹ chống mài mòn, tích hợp hệ thống đỉa gài MOLLE và túi đựng 3 băng đạn M4 phía trước.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fvest.jpg?alt=media',
+          'https://images.unsplash.com/photo-1508873696983-2df519f0397e?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -225,7 +233,7 @@ class SeedService {
         'battery': null,
         'description': 'Mũ bảo hiểm chiến thuật trang bị ray gài phụ kiện 2 bên và ngàm gắn kính nhìn đêm NVG chuyên nghiệp.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fhelmet.jpg?alt=media',
+          'https://images.unsplash.com/photo-1582201942988-13e60e4556ee?w=600&auto=format&fit=crop&q=80',
         ],
       },
       {
@@ -242,7 +250,7 @@ class SeedService {
         'battery': null,
         'description': 'Mặt nạ bảo hộ cao cấp nhất thế giới với tròng kính đôi chống đọng sương 100%, góc nhìn rộng 290 độ.',
         'images': [
-          'https://firebasestorage.googleapis.com/v0/b/airsoft-mobile-store.appspot.com/o/products%2Fmask.jpg?alt=media',
+          'https://images.unsplash.com/photo-1534067783941-51c9c23eccfd?w=600&auto=format&fit=crop&q=80',
         ],
       },
     ];
