@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/auth/auth_gate.dart';
 import 'screens/customer/profile_screen.dart';
+import 'services/push_notification_service.dart';
 import 'services/seed_service.dart';
 import 'theme/app_theme.dart';
 
@@ -11,6 +12,13 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize FCM Push Notifications & Local Notification Channel
+  try {
+    await PushNotificationService().initialize();
+  } catch (e) {
+    debugPrint('Push notification init exception: $e');
+  }
 
   runApp(const MyApp());
 

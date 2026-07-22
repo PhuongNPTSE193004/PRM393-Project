@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/order.dart';
+import '../../services/push_notification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
 import '../customer/order_detail_screen.dart';
@@ -203,7 +204,7 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
                   ],
                   onChanged: (newStatus) {
                     if (newStatus != null) {
-                      _updateOrderStatus(order.id, newStatus);
+                      _updateOrderStatus(order, newStatus);
                     }
                   },
                 ),
@@ -229,15 +230,26 @@ class _AdminOrderListScreenState extends State<AdminOrderListScreen> {
     );
   }
 
-  Future<void> _updateOrderStatus(String orderId, String newStatus) async {
-    await _firestore.collection('orders').doc(orderId).update({
+  Future<void> _updateOrderStatus(OrderModel order, String newStatus) async {
+    await _firestore.collection('orders').doc(order.id).update({
       'status': newStatus,
       'updated_at': FieldValue.serverTimestamp(),
     });
 
+    // Send push notification & store notification record for customer
+    try {
+      await PushNotificationService().sendOrderStatusPushNotification(
+        userId: order.userId,
+        orderId: order.id,
+        status: newStatus,
+      );
+    } catch (e) {
+      debugPrint('Failed to trigger push notification: $e');
+    }
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã cập nhật trạng thái đơn hàng thành: $newStatus')),
+      SnackBar(content: Text('Đã cập nhật trạng thái đơn hàng thành: $newStatus (Push Notification Sent)')),
     );
   }
 }

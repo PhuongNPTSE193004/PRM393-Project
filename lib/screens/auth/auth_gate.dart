@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/user_role.dart';
 import '../../navigation/role_router.dart';
 import '../../services/auth_service.dart';
+import '../../services/push_notification_service.dart';
 import '../../theme/app_theme.dart';
 import '../login_screen.dart';
 import 'verification_screen.dart';
@@ -29,6 +30,9 @@ class AuthGate extends StatelessWidget {
         if (user == null) {
           return const LoginScreen();
         }
+
+        // Save FCM token for logged in user
+        PushNotificationService().saveUserFcmToken(user);
 
         if (!authService.isEmailVerified) {
           return VerificationScreen(email: authService.currentUserEmail ?? '');
