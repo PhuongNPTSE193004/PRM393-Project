@@ -48,4 +48,19 @@ class OrderModel {
       createdAt: created,
     );
   }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'user_id': userId,
+      'total': total,
+      'status': status,
+      'shipping_name': shippingName,
+      'shipping_phone': shippingPhone,
+      'shipping_address': shippingAddress,
+      'shipping_city': shippingCity,
+      'payment_method': paymentMethod,
+      'notes': notes,
+      'created_at': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+    };
+  }
 }

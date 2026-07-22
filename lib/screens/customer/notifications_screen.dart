@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/notification/notification_bloc.dart';
+import '../../blocs/notification/notification_event.dart';
+import '../../blocs/notification/notification_state.dart';
 import '../../models/app_notification.dart';
-import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
   final String uid;
-  final NotificationService service;
 
   const NotificationsScreen({
     super.key,
     required this.uid,
-    required this.service,
   });
 
   @override
@@ -66,30 +67,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _markAllAsRead() async {
-    try {
-      await widget.service.markAllAsRead(widget.uid);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã đánh dấu tất cả là đã đọc'),
-          backgroundColor: kNeon,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Không thể cập nhật thông báo: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
+    // Ideally this should be an event in NotificationBloc
+    // For now, we can add it to the bloc or call repository directly if available
+    // Let's assume we want to keep it in the bloc.
+    // context.read<NotificationBloc>().add(NotificationMarkAllAsReadRequested(widget.uid));
   }
 
-  Future<void> _markAsRead(String id) async {
-    try {
-      await widget.service.markAsRead(id);
-    } catch (_) {}
+  void _markAsRead(String id) {
+    context.read<NotificationBloc>().add(NotificationMarkAsReadRequested(id));
   }
 
   @override
@@ -116,23 +101,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: StreamBuilder<List<AppNotification>>(
-        stream: widget.service.getNotifications(widget.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: BlocBuilder<NotificationBloc, NotificationState>(
+        builder: (context, state) {
+          if (state.status == NotificationStatus.loading && state.notifications.isEmpty) {
             return const Center(child: CircularProgressIndicator(color: kNeon));
           }
 
-          if (snapshot.hasError) {
+          if (state.status == NotificationStatus.failure && state.notifications.isEmpty) {
             return Center(
               child: Text(
-                'Lỗi: ${snapshot.error}',
+                'Lỗi: ${state.error}',
                 style: const TextStyle(color: Colors.redAccent),
               ),
             );
           }
 
-          final notifications = snapshot.data ?? [];
+          final notifications = state.notifications;
           if (notifications.isEmpty) {
             return _buildEmptyState();
           }

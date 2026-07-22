@@ -1,6 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../blocs/product/product_bloc.dart';
+import '../../blocs/product/product_event.dart';
+import '../../blocs/product/product_state.dart';
 import '../../models/product.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
@@ -14,9 +17,14 @@ class AdminProductListScreen extends StatefulWidget {
 }
 
 class _AdminProductListScreenState extends State<AdminProductListScreen> {
-  final _firestore = FirebaseFirestore.instance;
   final _searchCtrl = TextEditingController();
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<ProductBloc>().add(ProductSubscriptionRequested());
+  }
 
   @override
   void dispose() {
@@ -70,34 +78,19 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore.collection('products').snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: BlocBuilder<ProductBloc, ProductState>(
+              builder: (context, state) {
+                if (state.status == ProductStatus.loading && state.products.isEmpty) {
                   return const Center(child: CircularProgressIndicator(color: kNeon));
                 }
 
-                if (snapshot.hasError) {
+                if (state.status == ProductStatus.failure && state.products.isEmpty) {
                   return Center(
-                    child: Text('Lỗi tải sản phẩm: ${snapshot.error}', style: const TextStyle(color: Colors.redAccent)),
+                    child: Text('Lỗi tải sản phẩm: ${state.error}', style: const TextStyle(color: Colors.redAccent)),
                   );
                 }
 
-                final docs = snapshot.data?.docs ?? [];
-                var products = docs.map((d) {
-                  final data = d.data() as Map<String, dynamic>;
-                  return Product(
-                    slug: data['slug'] ?? d.id,
-                    name: data['name'] ?? data['title'] ?? 'Unknown',
-                    brand: data['brand'],
-                    price: (data['price'] as num?)?.toDouble() ?? 0,
-                    rating: (data['rating'] as num?)?.toDouble() ?? 0,
-                    fps: (data['fps'] as num?)?.toInt(),
-                    stock: (data['stock'] as num?)?.toInt() ?? 0,
-                    categorySlug: data['categorySlug'] ?? '',
-                    images: List<String>.from(data['images'] ?? []),
-                  );
-                }).toList();
+                var products = state.products;
 
                 if (_query.isNotEmpty) {
                   products = products
@@ -204,7 +197,7 @@ class _AdminProductListScreenState extends State<AdminProductListScreen> {
     );
 
     if (ok == true) {
-      await _firestore.collection('products').doc(product.slug).delete();
+      context.read<ProductBloc>().add(ProductDeleteRequested(product.slug));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Đã xóa sản phẩm ${product.name}')),

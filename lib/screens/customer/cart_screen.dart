@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../models/cart_item.dart';
+import '../../blocs/cart/cart_bloc.dart';
+import '../../blocs/cart/cart_event.dart';
+import '../../blocs/cart/cart_state.dart';
 import '../../repositories/firebase/firestore_product_repository.dart';
-import '../../services/cart_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/cart_item_tile.dart';
@@ -10,19 +12,14 @@ import 'checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   final String uid;
-  final CartService cartService;
 
-  const CartScreen({super.key, required this.uid, required this.cartService});
+  const CartScreen({super.key, required this.uid});
 
   @override
   State<CartScreen> createState() => _CartScreenState();
 }
 
 class _CartScreenState extends State<CartScreen> {
-  List<CartItem> _items = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
   final _couponController = TextEditingController();
   double _discount = 0;
 
@@ -31,7 +28,7 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCart();
+    context.read<CartBloc>().add(CartLoadRequested(widget.uid));
   }
 
   @override
@@ -40,64 +37,37 @@ class _CartScreenState extends State<CartScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCart() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final items = await widget.cartService.getCartItems(widget.uid);
-      if (!mounted) return;
-      setState(() {
-        _items = items;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Không thể tải giỏ hàng. Vui lòng thử lại.';
-        _isLoading = false;
-      });
-    }
+  void _incrementQuantity(String productSlug, int currentQuantity) {
+    context.read<CartBloc>().add(
+          CartItemQuantityUpdated(
+            uid: widget.uid,
+            productSlug: productSlug,
+            quantity: currentQuantity + 1,
+          ),
+        );
   }
 
-  Future<void> _incrementQuantity(CartItem item) async {
-    await widget.cartService.updateQuantity(
-      uid: widget.uid,
-      productSlug: item.product.slug,
-      quantity: item.quantity + 1,
-    );
-    if (!mounted) return;
-    _loadCart();
+  void _decrementQuantity(String productSlug, int currentQuantity) {
+    context.read<CartBloc>().add(
+          CartItemQuantityUpdated(
+            uid: widget.uid,
+            productSlug: productSlug,
+            quantity: currentQuantity - 1,
+          ),
+        );
   }
 
-  Future<void> _decrementQuantity(CartItem item) async {
-    await widget.cartService.updateQuantity(
-      uid: widget.uid,
-      productSlug: item.product.slug,
-      quantity: item.quantity - 1,
-    );
-    if (!mounted) return;
-    _loadCart();
+  void _removeItem(String productSlug) {
+    context.read<CartBloc>().add(
+          CartItemRemoved(
+            uid: widget.uid,
+            productSlug: productSlug,
+          ),
+        );
   }
 
-  Future<void> _removeItem(CartItem item) async {
-    await widget.cartService.removeItem(
-      uid: widget.uid,
-      productSlug: item.product.slug,
-    );
-    if (!mounted) return;
-    _loadCart();
-  }
-
-  void _applyCoupon() {
-    // TODO: replace with real coupon validation once a CouponService exists.
-    // Kept local to UI state for now since there is no coupon repository
-    // in the current architecture.
+  void _applyCoupon(double subtotal) {
     final code = _couponController.text.trim().toUpperCase();
-    final subtotal = widget.cartService.calculateSubtotal(_items);
-
     setState(() {
       _discount = code == 'TACTIC20' ? subtotal * 0.20 : 0;
     });
@@ -105,33 +75,37 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final subtotal = widget.cartService.calculateSubtotal(_items);
-    final total = (subtotal - _discount).clamp(0.0, double.infinity).toDouble();
-    final itemCount = widget.cartService.calculateItemCount(_items);
+    return BlocBuilder<CartBloc, CartState>(
+      builder: (context, state) {
+        final subtotal = state.subtotal;
+        final total = (subtotal - _discount).clamp(0.0, double.infinity).toDouble();
+        final itemCount = state.itemCount;
 
-    return Scaffold(
-      backgroundColor: kBackground,
-      appBar: AppBar(
-        backgroundColor: kBackground,
-        foregroundColor: kNeon,
-        title: const Text(
-          'GIỎ HÀNG',
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
+        return Scaffold(
+          backgroundColor: kBackground,
+          appBar: AppBar(
+            backgroundColor: kBackground,
+            foregroundColor: kNeon,
+            title: const Text(
+              'GIỎ HÀNG',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
           ),
-        ),
-      ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: kNeon))
-            : _errorMessage != null
-            ? _buildError(_errorMessage!)
-            : _items.isEmpty
-            ? _buildEmptyState()
-            : _buildCartContent(subtotal, total, itemCount),
-      ),
+          body: SafeArea(
+            child: state.status == CartStatus.loading && state.items.isEmpty
+                ? const Center(child: CircularProgressIndicator(color: kNeon))
+                : state.status == CartStatus.failure && state.items.isEmpty
+                    ? _buildError(state.error ?? 'Lỗi tải giỏ hàng')
+                    : state.items.isEmpty
+                        ? _buildEmptyState()
+                        : _buildCartContent(state, subtotal, total, itemCount),
+          ),
+        );
+      },
     );
   }
 
@@ -144,7 +118,10 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           Text(message, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 12),
-          TextButton(onPressed: _loadCart, child: const Text('Thử lại')),
+          TextButton(
+            onPressed: () => context.read<CartBloc>().add(CartLoadRequested(widget.uid)),
+            child: const Text('Thử lại'),
+          ),
         ],
       ),
     );
@@ -179,7 +156,7 @@ class _CartScreenState extends State<CartScreen> {
 
   // ─── Main content ────────────────────────────────────────────────────────
 
-  Widget _buildCartContent(double subtotal, double total, int itemCount) {
+  Widget _buildCartContent(CartState state, double subtotal, double total, int itemCount) {
     return Column(
       children: [
         _buildHeader(itemCount),
@@ -187,25 +164,25 @@ class _CartScreenState extends State<CartScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             children: [
-              ..._items.map(
+              ...state.items.map(
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: CartItemTile(
                     item: item,
-                    onIncrement: () => _incrementQuantity(item),
-                    onDecrement: () => _decrementQuantity(item),
-                    onRemove: () => _removeItem(item),
+                    onIncrement: () => _incrementQuantity(item.product.slug, item.quantity),
+                    onDecrement: () => _decrementQuantity(item.product.slug, item.quantity),
+                    onRemove: () => _removeItem(item.product.slug),
                   ),
                 ),
               ),
               const SizedBox(height: 8),
-              _buildCouponField(),
+              _buildCouponField(subtotal),
               const SizedBox(height: 20),
               _buildSummary(subtotal, total),
             ],
           ),
         ),
-        _buildCheckoutBar(total),
+        _buildCheckoutBar(state, total),
       ],
     );
   }
@@ -221,19 +198,19 @@ class _CartScreenState extends State<CartScreen> {
             style: const TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 12),
-          Container(height: 1, color: Colors.white.withOpacity(0.08)),
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.08)),
         ],
       ),
     );
   }
 
-  Widget _buildCouponField() {
+  Widget _buildCouponField(double subtotal) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         children: [
@@ -252,7 +229,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           TextButton(
-            onPressed: _applyCoupon,
+            onPressed: () => _applyCoupon(subtotal),
             style: TextButton.styleFrom(
               backgroundColor: kNeon,
               foregroundColor: Colors.black,
@@ -286,7 +263,7 @@ class _CartScreenState extends State<CartScreen> {
           _summaryRow('Giảm giá', '-${formatVnd(_discount)}đ'),
         ],
         const SizedBox(height: 12),
-        Container(height: 1, color: Colors.white.withOpacity(0.08)),
+        Container(height: 1, color: Colors.white.withValues(alpha: 0.08)),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -326,20 +303,21 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCheckoutBar(double total) {
+  Widget _buildCheckoutBar(CartState state, double total) {
+    final isLoading = state.status == CartStatus.loading;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: SizedBox(
         width: double.infinity,
         height: 52,
         child: ElevatedButton(
-          onPressed: _isLoading
+          onPressed: isLoading
               ? null
               : () async {
-                  setState(() => _isLoading = true);
+                  // TODO: This logic should ideally be moved to the BLoC as well
                   try {
                     final productRepository = FirestoreProductRepository();
-                    for (final item in _items) {
+                    for (final item in state.items) {
                       final freshProd = await productRepository.getProductBySlug(item.product.slug);
                       if (freshProd == null) {
                         throw Exception('Sản phẩm "${item.product.name}" không còn tồn tại.');
@@ -356,7 +334,6 @@ class _CartScreenState extends State<CartScreen> {
                       MaterialPageRoute(
                         builder: (_) => CheckoutScreen(
                           uid: widget.uid,
-                          cartService: widget.cartService,
                         ),
                       ),
                     );
@@ -368,8 +345,6 @@ class _CartScreenState extends State<CartScreen> {
                         backgroundColor: Colors.redAccent,
                       ),
                     );
-                  } finally {
-                    if (mounted) setState(() => _isLoading = false);
                   }
                 },
           style: ElevatedButton.styleFrom(

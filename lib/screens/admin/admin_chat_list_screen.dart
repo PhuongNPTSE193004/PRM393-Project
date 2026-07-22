@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/chat/chat_bloc.dart';
+import '../../blocs/chat/chat_event.dart';
+import '../../blocs/chat/chat_state.dart';
 import '../../models/chat_room.dart';
-import '../../services/chat_service.dart';
 import '../../theme/app_theme.dart';
 import 'admin_chat_screen.dart';
 
@@ -19,7 +22,11 @@ class AdminChatListScreen extends StatefulWidget {
 }
 
 class _AdminChatListScreenState extends State<AdminChatListScreen> {
-  final _chatService = ChatService();
+  @override
+  void initState() {
+    super.initState();
+    context.read<ChatBloc>().add(ChatRoomsSubscriptionRequested());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,17 +44,16 @@ class _AdminChatListScreenState extends State<AdminChatListScreen> {
           ),
         ),
       ),
-      body: StreamBuilder<List<ChatRoom>>(
-        stream: _chatService.getChatRooms(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: BlocBuilder<ChatBloc, ChatState>(
+        builder: (context, state) {
+          if (state.status == ChatStatus.loading && state.rooms.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(color: kNeon),
             );
           }
 
-          if (snapshot.hasError) {
-            final isPermission = snapshot.error.toString().contains('permission-denied');
+          if (state.status == ChatStatus.failure && state.rooms.isEmpty) {
+            final isPermission = state.error.toString().contains('permission-denied');
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
@@ -72,7 +78,7 @@ class _AdminChatListScreenState extends State<AdminChatListScreen> {
                     Text(
                       isPermission
                           ? 'Firebase Security Rules cần cho phép tài khoản Admin/Staff đọc collection "chats". Vui lòng cập nhật Rules trên Firebase Console.'
-                          : '${snapshot.error}',
+                          : '${state.error}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: kMuted,
@@ -86,7 +92,7 @@ class _AdminChatListScreenState extends State<AdminChatListScreen> {
             );
           }
 
-          final rooms = snapshot.data ?? [];
+          final rooms = state.rooms;
           if (rooms.isEmpty) {
             return _buildEmptyInbox();
           }

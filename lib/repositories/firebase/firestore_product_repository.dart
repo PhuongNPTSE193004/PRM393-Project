@@ -4,7 +4,7 @@ import '../../models/product.dart';
 
 class FirestoreProductRepository implements ProductRepository {
   FirestoreProductRepository({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -19,13 +19,13 @@ class FirestoreProductRepository implements ProductRepository {
     final createdAtVal = data['createdAt'];
     return Product(
       slug: data['slug'] ?? docId,
-      name: data['name'] ?? '',
+      name: data['name'] ?? data['title'] ?? 'Unknown',
       brand: data['brand'],
       price: (data['price'] as num?)?.toDouble() ?? 0,
       discountPrice: (data['discountPrice'] as num?)?.toDouble(),
       rating: (data['rating'] as num?)?.toDouble() ?? 0,
-      fps: data['fps'],
-      stock: data['stock'] ?? 0,
+      fps: data['fps'] as int?,
+      stock: (data['stock'] as num?)?.toInt() ?? 0,
       categorySlug: data['categorySlug'] ?? '',
       description: data['description'] ?? '',
       material: data['material'],
@@ -49,11 +49,16 @@ class FirestoreProductRepository implements ProductRepository {
   }
 
   @override
+  Stream<List<Product>> watchProducts() {
+    return _products.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => _fromData(doc.id, doc.data())).toList();
+    });
+  }
+
+  @override
   Future<Product?> getProductBySlug(String slug) async {
     final doc = await _products.doc(slug).get();
-    if (!doc.exists) {
-      return null;
-    }
+    if (!doc.exists) return null;
     return _fromData(doc.id, doc.data()!);
   }
 
@@ -63,5 +68,10 @@ class FirestoreProductRepository implements ProductRepository {
         .where('categorySlug', isEqualTo: categorySlug)
         .get();
     return snapshot.docs.map(_fromDoc).toList();
+  }
+
+  @override
+  Future<void> deleteProduct(String slug) async {
+    await _products.doc(slug).delete();
   }
 }

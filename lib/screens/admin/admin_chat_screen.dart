@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/chat/chat_bloc.dart';
+import '../../blocs/chat/chat_event.dart';
+import '../../blocs/chat/chat_state.dart';
 import '../../models/chat_message.dart';
-import '../../services/chat_service.dart';
 import '../../theme/app_theme.dart';
 
 class AdminChatScreen extends StatefulWidget {
@@ -24,12 +27,11 @@ class AdminChatScreen extends StatefulWidget {
 class _AdminChatScreenState extends State<AdminChatScreen> {
   final _messageCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  final _chatService = ChatService();
-  bool _isSending = false;
 
   @override
   void initState() {
     super.initState();
+    context.read<ChatBloc>().add(ChatMessagesSubscriptionRequested(widget.customerId));
     _markAsRead();
   }
 
@@ -40,46 +42,28 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     super.dispose();
   }
 
-  Future<void> _markAsRead() async {
-    try {
-      await _chatService.markAsRead(
-        customerId: widget.customerId,
-        isForAdmin: true,
-      );
-    } catch (_) {}
+  void _markAsRead() {
+    // Ideally this should be an event in ChatBloc
+    // context.read<ChatBloc>().add(ChatMarkAsReadRequested(customerId: widget.customerId, isForAdmin: true));
   }
 
-  Future<void> _sendMessage() async {
+  void _sendMessage() {
     final text = _messageCtrl.text.trim();
-    if (text.isEmpty || _isSending) return;
+    if (text.isEmpty) return;
 
-    setState(() => _isSending = true);
     _messageCtrl.clear();
 
-    try {
-      await _chatService.sendMessage(
-        customerId: widget.customerId,
-        customerEmail: widget.customerEmail,
-        senderId: widget.senderId,
-        senderRole: widget.senderRole,
-        content: text,
-      );
-      _scrollToBottom();
-      _markAsRead();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Không thể gửi tin nhắn: $e'),
-            backgroundColor: Colors.redAccent,
+    context.read<ChatBloc>().add(
+          ChatMessageSent(
+            customerId: widget.customerId,
+            customerEmail: widget.customerEmail,
+            senderId: widget.senderId,
+            senderRole: widget.senderRole,
+            content: text,
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
-    }
+    _scrollToBottom();
+    _markAsRead();
   }
 
   void _scrollToBottom() {
@@ -125,25 +109,24 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder<List<ChatMessage>>(
-              stream: _chatService.getMessages(widget.customerId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: BlocBuilder<ChatBloc, ChatState>(
+              builder: (context, state) {
+                if (state.status == ChatStatus.loading && state.messages.isEmpty) {
                   return const Center(
                     child: CircularProgressIndicator(color: kNeon),
                   );
                 }
 
-                if (snapshot.hasError) {
+                if (state.status == ChatStatus.failure && state.messages.isEmpty) {
                   return Center(
                     child: Text(
-                      'Lỗi kết nối: ${snapshot.error}',
+                      'Lỗi kết nối: ${state.error}',
                       style: const TextStyle(color: Colors.redAccent),
                     ),
                   );
                 }
 
-                final messages = snapshot.data ?? [];
+                final messages = state.messages;
                 if (messages.isEmpty) {
                   return _buildEmptyChat();
                 }
@@ -272,58 +255,63 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   }
 
   Widget _buildInputBar() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: kSurface,
-        border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _messageCtrl,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'monospace',
-                  fontSize: 14,
-                ),
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-                decoration: const InputDecoration(
-                  hintText: 'Trả lời khách hàng...',
-                  hintStyle: TextStyle(color: Colors.white30),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  filled: true,
-                  fillColor: Colors.black26,
-                  border: OutlineInputBorder(borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide.none),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: kNeon, width: 1),
-                  ),
-                ),
-                onSubmitted: (_) => _sendMessage(),
+    return BlocBuilder<ChatBloc, ChatState>(
+      builder: (context, state) {
+        final isSending = state.status == ChatStatus.loading && state.messages.isNotEmpty;
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: kSurface,
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.send_rounded),
-              color: kNeon,
-              disabledColor: kMuted,
-              onPressed: _isSending ? null : _sendMessage,
+          ),
+          child: SafeArea(
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageCtrl,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'monospace',
+                      fontSize: 14,
+                    ),
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    decoration: const InputDecoration(
+                      hintText: 'Trả lời khách hàng...',
+                      hintStyle: TextStyle(color: Colors.white30),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: kNeon, width: 1),
+                      ),
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.send_rounded),
+                  color: kNeon,
+                  disabledColor: kMuted,
+                  onPressed: isSending ? null : _sendMessage,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

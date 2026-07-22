@@ -1,6 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../blocs/order/order_bloc.dart';
+import '../../blocs/order/order_event.dart';
+import '../../blocs/order/order_state.dart';
 import '../../models/order.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
@@ -16,8 +19,13 @@ class OrderListScreen extends StatefulWidget {
 }
 
 class _OrderListScreenState extends State<OrderListScreen> {
-  final _firestore = FirebaseFirestore.instance;
   String _selectedFilter = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<OrderBloc>().add(OrderSubscriptionRequested(widget.uid));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,62 +43,47 @@ class _OrderListScreenState extends State<OrderListScreen> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          _buildFilterChips(),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('orders')
-                  .where('user_id', isEqualTo: widget.uid)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: kNeon),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Lỗi tải đơn hàng: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  );
-                }
-
-                final docs = snapshot.data?.docs ?? [];
-                var orders = docs.map((d) => OrderModel.fromFirestore(d)).toList();
-
-                // Client side sorting by createdAt descending
-                orders.sort((a, b) {
-                  final tA = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  final tB = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  return tB.compareTo(tA);
-                });
-
-                if (_selectedFilter != 'all') {
-                  orders = orders.where((o) => o.status == _selectedFilter).toList();
-                }
-
-                if (orders.isEmpty) {
-                  return _buildEmptyState();
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    final order = orders[index];
-                    return _buildOrderCard(order);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+      body: BlocBuilder<OrderBloc, OrderState>(
+        builder: (context, state) {
+          return Column(
+            children: [
+              _buildFilterChips(),
+              Expanded(
+                child: state.status == OrderStatus.loading && state.orders.isEmpty
+                    ? const Center(child: CircularProgressIndicator(color: kNeon))
+                    : state.status == OrderStatus.failure && state.orders.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Lỗi tải đơn hàng: ${state.error}',
+                              style: const TextStyle(color: Colors.redAccent),
+                            ),
+                          )
+                        : _buildOrderList(state.orders),
+              ),
+            ],
+          );
+        },
       ),
+    );
+  }
+
+  Widget _buildOrderList(List<OrderModel> allOrders) {
+    var orders = allOrders;
+    if (_selectedFilter != 'all') {
+      orders = orders.where((o) => o.status == _selectedFilter).toList();
+    }
+
+    if (orders.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        return _buildOrderCard(order);
+      },
     );
   }
 
@@ -346,10 +339,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     );
 
     if (ok == true) {
-      await _firestore.collection('orders').doc(order.id).update({
-        'status': 'cancelled',
-        'updated_at': FieldValue.serverTimestamp(),
-      });
+      context.read<OrderBloc>().add(OrderCancelRequested(order.id));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đơn hàng đã được hủy thành công')),
