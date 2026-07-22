@@ -93,7 +93,7 @@ class ProductCard extends StatelessWidget {
                       ),
                     ),
 
-                    // Badges (FPS & Stock)
+                    // Badges (FPS & Stock & Discount)
                     Positioned(
                       top: 8,
                       left: 8,
@@ -124,27 +124,52 @@ class ProductCard extends StatelessWidget {
                           else
                             const SizedBox.shrink(),
                           
-                          if (outOfStock)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black87,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.redAccent),
-                              ),
-                              child: const Text(
-                                'HẾT HÀNG',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.redAccent,
-                                  fontFamily: 'monospace',
+                          Row(
+                            children: [
+                              if (product.discountPrice != null && !outOfStock)
+                                Container(
+                                  margin: const EdgeInsets.only(right: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'GIẢM GIÁ',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              if (outOfStock)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black87,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.redAccent),
+                                  ),
+                                  child: const Text(
+                                    'HẾT HÀNG',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.redAccent,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -187,13 +212,42 @@ class ProductCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          '${(product.price / 1000000).toStringAsFixed(1)}M ₫',
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: kNeon,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (product.discountPrice != null) ...[
+                                Text(
+                                  '${(product.price / 1000000).toStringAsFixed(1)}M ₫',
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 10,
+                                    decoration: TextDecoration.lineThrough,
+                                    color: kMuted,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  '${(product.discountPrice! / 1000000).toStringAsFixed(1)}M ₫',
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: kNeon,
+                                  ),
+                                ),
+                              ] else ...[
+                                Text(
+                                  '${(product.price / 1000000).toStringAsFixed(1)}M ₫',
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: kNeon,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                         Container(

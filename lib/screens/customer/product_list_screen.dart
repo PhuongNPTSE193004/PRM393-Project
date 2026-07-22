@@ -31,6 +31,8 @@ class ProductListScreen extends StatefulWidget {
 class _ProductListScreenState extends State<ProductListScreen> {
   String _searchQuery = '';
   String? _selectedCategory;
+  String? _selectedBrand;
+  bool _promoOnly = false;
   double _maxPrice = 20000000;
   bool _inStockOnly = false;
   bool _loading = true;
@@ -42,6 +44,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
   int _cartItemCount = 0;
 
   String? get _uid => _authService.currentUserId;
+
+  List<String> get _brands {
+    final list = _allProducts.map((p) => p.brand).whereType<String>().toSet().toList();
+    list.sort();
+    return list;
+  }
 
   @override
   void initState() {
@@ -90,11 +98,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
       if (_selectedCategory != null && p.categorySlug != _selectedCategory) {
         return false;
       }
+      if (_selectedBrand != null && p.brand != _selectedBrand) {
+        return false;
+      }
+      if (_promoOnly && p.discountPrice == null) {
+        return false;
+      }
       if (_searchQuery.isNotEmpty &&
           !p.name.toLowerCase().contains(_searchQuery.toLowerCase())) {
         return false;
       }
-      if (p.price > _maxPrice) return false;
+      // Check price - match against discountPrice if active, otherwise original price
+      final currentPrice = p.discountPrice ?? p.price;
+      if (currentPrice > _maxPrice) return false;
+      
       if (_inStockOnly && p.stock <= 0) return false;
       return true;
     }).toList();
@@ -171,10 +188,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Filter Panel (Price Slider & Stock Checkbox)
+          // Filter Panel (Price Slider, Brand & Checkboxes)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: kSurfaceCard,
               borderRadius: BorderRadius.circular(14),
@@ -183,6 +200,48 @@ class _ProductListScreenState extends State<ProductListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'HÃNG SẢN XUẤT',
+                      style: TextStyle(
+                        color: kMuted,
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    DropdownButton<String?>(
+                      value: _selectedBrand,
+                      dropdownColor: kSurfaceCard,
+                      underline: const SizedBox(),
+                      icon: const Icon(Icons.arrow_drop_down, color: kNeon, size: 18),
+                      style: const TextStyle(
+                        color: kNeon,
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                      ),
+                      hint: const Text('Tất cả hãng', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Tất cả hãng'),
+                        ),
+                        ..._brands.map((b) => DropdownMenuItem<String?>(
+                              value: b,
+                              child: Text(b),
+                            )),
+                      ],
+                      onChanged: (val) {
+                        setState(() => _selectedBrand = val);
+                      },
+                    ),
+                  ],
+                ),
+                const Divider(color: Colors.white10, height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -232,26 +291,56 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 ),
                 Row(
                   children: [
-                    SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: Checkbox(
-                        value: _inStockOnly,
-                        activeColor: kNeon,
-                        checkColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                        onChanged: (v) =>
-                            setState(() => _inStockOnly = v ?? false),
-                      ),
+                    Row(
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: _inStockOnly,
+                            activeColor: kNeon,
+                            checkColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            onChanged: (v) =>
+                                setState(() => _inStockOnly = v ?? false),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Còn hàng',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Chỉ hiển thị sản phẩm còn sẵn hàng',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                      ),
+                    const SizedBox(width: 24),
+                    Row(
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: _promoOnly,
+                            activeColor: kNeon,
+                            checkColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            onChanged: (v) =>
+                                setState(() => _promoOnly = v ?? false),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Khuyến mãi',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

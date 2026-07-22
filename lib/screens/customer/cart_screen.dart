@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/cart_item.dart';
+import '../../repositories/firebase/firestore_product_repository.dart';
 import '../../services/cart_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/formatters.dart';
@@ -332,16 +333,45 @@ class _CartScreenState extends State<CartScreen> {
         width: double.infinity,
         height: 52,
         child: ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => CheckoutScreen(
-                  uid: widget.uid,
-                  cartService: widget.cartService,
-                ),
-              ),
-            );
-          },
+          onPressed: _isLoading
+              ? null
+              : () async {
+                  setState(() => _isLoading = true);
+                  try {
+                    final productRepository = FirestoreProductRepository();
+                    for (final item in _items) {
+                      final freshProd = await productRepository.getProductBySlug(item.product.slug);
+                      if (freshProd == null) {
+                        throw Exception('Sản phẩm "${item.product.name}" không còn tồn tại.');
+                      }
+                      if (item.quantity > freshProd.stock) {
+                        throw Exception(
+                          'Sản phẩm "${item.product.name}" chỉ còn lại ${freshProd.stock} mặt hàng trong kho. Vui lòng giảm số lượng.',
+                        );
+                      }
+                    }
+
+                    if (!mounted) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CheckoutScreen(
+                          uid: widget.uid,
+                          cartService: widget.cartService,
+                        ),
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString().replaceAll('Exception: ', '')),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  } finally {
+                    if (mounted) setState(() => _isLoading = false);
+                  }
+                },
           style: ElevatedButton.styleFrom(
             backgroundColor: kNeon,
             foregroundColor: Colors.black,

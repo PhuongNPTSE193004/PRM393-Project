@@ -51,6 +51,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   static const _kBottomBarHeight = 80.0;
 
   @override
+  void initState() {
+    super.initState();
+    _quantity = widget.product.stock > 0 ? 1 : 0;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final product = widget.product;
 
@@ -224,14 +230,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           const SizedBox(height: 12),
 
           // Price
-          Text(
-            '${formatVnd(product.price)}đ',
-            style: const TextStyle(
-              color: kNeon,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
+          if (product.discountPrice != null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${formatVnd(product.discountPrice!)}đ',
+                  style: const TextStyle(
+                    color: kNeon,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '${formatVnd(product.price)}đ',
+                  style: const TextStyle(
+                    color: kMuted,
+                    fontSize: 16,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              ],
             ),
-          ),
+          ] else ...[
+            Text(
+              '${formatVnd(product.price)}đ',
+              style: const TextStyle(
+                color: kNeon,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
 
           const SizedBox(height: 16),
         ],
@@ -289,10 +320,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildSpecs(Product product) {
     final specs = <_SpecEntry>[
-      _SpecEntry('FPS', '${product.fps ?? '-'}'),
-      _SpecEntry('Material', product.material ?? '-'),
-      _SpecEntry('Mag', product.magazine ?? '-'),
-      _SpecEntry('Battery', product.battery ?? '-'),
+      if (product.fps != null) _SpecEntry('FPS', '${product.fps}'),
+      if (product.material != null) _SpecEntry('Chất liệu (Material)', product.material!),
+      if (product.magazine != null) _SpecEntry('Băng đạn (Magazine)', product.magazine!),
+      if (product.battery != null) _SpecEntry('Pin / Battery', product.battery!),
+      if (product.fireMode != null) _SpecEntry('Chế độ bắn (Fire mode)', product.fireMode!),
+      if (product.powerSource != null) _SpecEntry('Nguồn lực (Power source)', product.powerSource!),
+      if (product.barrelLength != null) _SpecEntry('Chiều dài nòng (Barrel)', '${product.barrelLength} mm'),
+      if (product.weight != null) _SpecEntry('Trọng lượng (Weight)', '${product.weight} kg'),
+      if (product.warranty != null) _SpecEntry('Bảo hành (Warranty)', product.warranty!),
     ];
 
     return Padding(
@@ -387,20 +423,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // ─── Bottom Bar ──────────────────────────────────────────────────────────────
 
   Widget _buildBottomBar() {
+    final bool outOfStock = widget.product.stock <= 0;
+
     return Container(
       height: _kBottomBarHeight,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         color: kBackground,
         border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.08)),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
       ),
       child: Row(
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: _isAddingToCart ? null : _addToCart,
+              onPressed: (outOfStock || _isAddingToCart) ? null : _addToCart,
               icon: _isAddingToCart
                   ? const SizedBox(
                 width: 16,
@@ -410,11 +448,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   color: Colors.white,
                 ),
               )
-                  : const Icon(Icons.shopping_cart_outlined, size: 18),
-              label: const Text('Thêm vào giỏ'),
+                  : Icon(outOfStock ? Icons.block : Icons.shopping_cart_outlined, size: 18),
+              label: Text(outOfStock ? 'Hết hàng' : 'Thêm vào giỏ'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                foregroundColor: outOfStock ? kMuted : Colors.white,
+                side: BorderSide(color: outOfStock ? Colors.white12 : Colors.white.withValues(alpha: 0.3)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(40),
                 ),
@@ -424,16 +462,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
-              onPressed: _isAddingToCart ? null : _buyNow,
+              onPressed: (outOfStock || _isAddingToCart) ? null : _buyNow,
               style: ElevatedButton.styleFrom(
-                backgroundColor: kNeon,
-                foregroundColor: Colors.black,
+                backgroundColor: outOfStock ? kSurfaceCard : kNeon,
+                foregroundColor: outOfStock ? kMuted : Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(40),
                 ),
               ),
-              child: const Text(
-                'Mua ngay',
+              child: Text(
+                outOfStock ? 'Tạm hết hàng' : 'Mua ngay',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
