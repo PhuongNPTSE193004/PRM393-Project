@@ -25,7 +25,7 @@ void main() async {
   // Auto-seed initial catalog data asynchronously after UI initializes
   Future.microtask(() async {
     try {
-      await SeedService().seedInitialData(force: true);
+      await SeedService().seedInitialData();
     } catch (e) {
       debugPrint('Seed check exception: $e');
     }
