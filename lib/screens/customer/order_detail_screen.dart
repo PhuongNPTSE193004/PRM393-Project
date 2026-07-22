@@ -156,7 +156,7 @@ class OrderDetailScreen extends StatelessWidget {
         ),
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection('order_items')
+              .collection('OrderItems')
               .where('order_id', isEqualTo: order.id)
               .snapshots(),
           builder: (context, snapshot) {

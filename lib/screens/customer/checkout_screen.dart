@@ -443,13 +443,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final batch = _firestore.batch();
     for (final line in _items) {
-      final oiRef = _firestore.collection('order_items').doc();
-      batch.set(oiRef, {
+      // 1. Save to legacy root collection 'order_items'
+      final oiRefLegacy = _firestore.collection('order_items').doc();
+      final itemData = {
         'order_id': orderRef.id,
         'product_id': line.product.slug,
         'product_name': line.product.name,
         'unit_price': line.unitPrice,
         'quantity': line.quantity,
+      };
+      batch.set(oiRefLegacy, itemData);
+
+      // 2. Save to PascalCase root collection 'OrderItems'
+      final oiRefPascal = _firestore.collection('OrderItems').doc();
+      batch.set(oiRefPascal, itemData);
+
+      // 3. Save to sub-collection 'OrderItems' inside the order document
+      final oiRefSub = orderRef.collection('OrderItems').doc();
+      batch.set(oiRefSub, itemData);
+
+      // 4. Update/Subtract product stock quantity in Firestore
+      final prodRef = _firestore.collection('products').doc(line.product.slug);
+      batch.update(prodRef, {
+        'stock': FieldValue.increment(-line.quantity),
       });
     }
 
